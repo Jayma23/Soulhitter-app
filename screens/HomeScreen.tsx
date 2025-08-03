@@ -17,41 +17,28 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import * as SecureStore from 'expo-secure-store';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 const { width, height } = Dimensions.get('window');
 import { useUser } from './UserContext';
 import { Image } from 'react-native';
-
+import ChatListTabView from "@/screens/ChatListTabView";
 
 export default function HomeScreen() {
     const navigation = useNavigation<any>();
     const [isLoading, setIsLoading] = useState(false);
-    //const [userName, setUserName] = useState('User');
     const [currentTime, setCurrentTime] = useState(new Date());
     const [activeTab, setActiveTab] = useState(0);
-    //const [userPhoto, setUserPhoto] = useState<string | null>(null);
     const { user } = useUser();
-
-
+    const insets = useSafeAreaInsets();
 
     // Animation values
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const slideAnim = useRef(new Animated.Value(30)).current;
     const pulseAnim = useRef(new Animated.Value(1)).current;
     const sparkleAnim = useRef(new Animated.Value(0)).current;
-
-    /*useEffect(() => {
-        const loadUserInfo = async () => {
-            const name = await SecureStore.getItemAsync('name1');
-            const photo = await SecureStore.getItemAsync('photo');
-            if (name) setUserName(name);
-            if (photo) setUserPhoto(photo);
-        };
-
-        loadUserInfo();
-    }, []);
-    */
 
     console.log(user?.photo)
     console.log(user?.name)
@@ -64,7 +51,6 @@ export default function HomeScreen() {
         }
         return true;
     };
-    //console.log(userName)
 
     const uploadToCloudinary = async (uri: string) => {
         const data = new FormData();
@@ -251,7 +237,6 @@ export default function HomeScreen() {
     };
 
     const handleLogout = async () => {
-
         Alert.alert(
             'Logout',
             'Are you sure you want to logout?',
@@ -264,9 +249,6 @@ export default function HomeScreen() {
                         try {
                             await SecureStore.deleteItemAsync('user_id');
                             await SecureStore.deleteItemAsync('token');
-                            //setUserName('');
-                            //setUserPhoto('');
-
 
                             navigation.reset({
                                 index: 0,
@@ -485,9 +467,9 @@ export default function HomeScreen() {
                     <Ionicons
                         name={iconName}
                         size={26}
-                        color={isActive ? '#10b981' : '#9ca3af'}
+                        color={isActive ? '#ffffff' : 'rgba(255,255,255,0.6)'}
                     />
-                    <Text style={[styles.tabLabel, { color: isActive ? '#10b981' : '#9ca3af' }]}>
+                    <Text style={[styles.tabLabel, { color: isActive ? '#ffffff' : 'rgba(255,255,255,0.6)' }]}>
                         {label}
                     </Text>
                     {isActive && <View style={styles.activeIndicator} />}
@@ -548,7 +530,6 @@ export default function HomeScreen() {
     };
 
     const renderMainContent = () => {
-
         return (
             <ScrollView
                 style={styles.scrollView}
@@ -562,30 +543,38 @@ export default function HomeScreen() {
                         styles.header,
                         {
                             opacity: fadeAnim,
-                            transform: [{ translateY: slideAnim }]
+                            transform: [{ translateY: slideAnim }],
+                            paddingTop: Platform.OS === 'ios' ? 0 : 20,
                         }
                     ]}
                 >
-                    <View style={styles.headerLeft}>
-                        <Text style={styles.greeting}>{getGreeting()}</Text>
-                        <TouchableOpacity>
-                            <Text style={styles.userName}>{user?.name} 👋</Text>
-                        </TouchableOpacity>
-                        <Text style={styles.timeText}>
-                            {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </Text>
-                    </View>
-                    <TouchableOpacity
-                        style={styles.profileButton}
-                        onPress={() => navigation.navigate('profileUpdate')}
-                    >
+                    <BlurView intensity={20} style={styles.headerBlur}>
                         <LinearGradient
-                            colors={['#667eea', '#764ba2']}
-                            style={styles.profileGradient}
+                            colors={['rgba(255,255,255,0.25)', 'rgba(255,255,255,0.15)']}
+                            style={styles.headerGradient}
                         >
-                            <Ionicons name="person" size={24} color="#ffffff" />
+                            <View style={styles.headerLeft}>
+                                <Text style={styles.greeting}>{getGreeting()}</Text>
+                                <TouchableOpacity>
+                                    <Text style={styles.userName}>{user?.name || 'User'} 👋</Text>
+                                </TouchableOpacity>
+                                <Text style={styles.timeText}>
+                                    {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </Text>
+                            </View>
+                            <TouchableOpacity
+                                style={styles.profileButton}
+                                onPress={() => navigation.navigate('profileUpdate')}
+                            >
+                                <LinearGradient
+                                    colors={['rgba(255,255,255,0.3)', 'rgba(255,255,255,0.2)']}
+                                    style={styles.profileGradient}
+                                >
+                                    <Ionicons name="person" size={24} color="#ffffff" />
+                                </LinearGradient>
+                            </TouchableOpacity>
                         </LinearGradient>
-                    </TouchableOpacity>
+                    </BlurView>
                 </Animated.View>
 
                 {/* Stats Section */}
@@ -622,26 +611,10 @@ export default function HomeScreen() {
                         gradientColors={['#667eea', '#764ba2']}
                         onPress={() => navigation.navigate('Preference', { mode: 'detailed' })}
                     />
-
-                    <FeatureCard
-                        title="My Conversations"
-                        subtitle="Continue your exciting conversations"
-                        iconName="chatbubbles"
-                        gradientColors={['#4facfe', '#00f2fe']}
-                        onPress={() => navigation.navigate('ChatList')}
-                    />
-
-                    <FeatureCard
-                        title="Generate Card"
-                        subtitle="Get your personal Card"
-                        iconName="chatbubbles"
-                        gradientColors={['#4facfe', '#00f2fe']}
-                        onPress={() => navigation.navigate('Gcard')}
-                    />
                 </View>
 
                 {/* Bottom Spacing for tab bar */}
-                <View style={styles.bottomSpacing} />
+                <View style={[styles.bottomSpacing, { height: 120 + insets.bottom }]} />
             </ScrollView>
         );
     };
@@ -652,47 +625,48 @@ export default function HomeScreen() {
                 return renderMainContent();
             case 1:
                 return (
-                    <View style={styles.tabContent}>
-                        <Text style={styles.tabContentTitle}>Matches</Text>
-                        <Text style={styles.tabContentSubtitle}>Your potential matches will appear here</Text>
-                    </View>
+                    <ChatListTabView />
                 );
             case 2:
                 return (
-                    <View style={styles.tabContent}>
-                        <Text style={styles.tabContentTitle}>Messages</Text>
-                        <Text style={styles.tabContentSubtitle}>Your conversations will appear here</Text>
-                    </View>
+                    <ChatListTabView />
                 );
             case 3:
                 return (
                     <ScrollView
                         style={styles.profileScrollView}
-                        contentContainerStyle={styles.profileScrollContent}
+                        contentContainerStyle={[
+                            styles.profileScrollContent,
+                            { paddingBottom: 120 + insets.bottom }
+                        ]}
                         showsVerticalScrollIndicator={false}
                     >
                         <View style={styles.profileTabContent}>
                             {/* Profile Header */}
-
-
                             <View style={styles.profileAvatarContainer}>
-                                {user?.photo ? (
-                                    <Image
-                                        source={{ uri: user?.photo ?? 'default.png' }}
-                                        style={styles.profileImage}
-                                        resizeMode="cover"
-                                    />
-                                ) : (
+                                <BlurView intensity={20} style={styles.profileAvatarBlur}>
                                     <LinearGradient
-                                        colors={['#667eea', '#764ba2']}
-                                        style={styles.profileAvatar}
+                                        colors={['rgba(255,255,255,0.25)', 'rgba(255,255,255,0.15)']}
+                                        style={styles.profileAvatarGradient}
                                     >
-                                        <Ionicons name="person" size={40} color="#ffffff" />
+                                        {user?.photo ? (
+                                            <Image
+                                                source={{ uri: user?.photo ?? 'default.png' }}
+                                                style={styles.profileImage}
+                                                resizeMode="cover"
+                                            />
+                                        ) : (
+                                            <LinearGradient
+                                                colors={['rgba(255,255,255,0.4)', 'rgba(255,255,255,0.3)']}
+                                                style={styles.profileAvatar}
+                                            >
+                                                <Ionicons name="person" size={40} color="#ffffff" />
+                                            </LinearGradient>
+                                        )}
+                                        <Text style={styles.profileName}>{user?.name ?? 'Anonymous'}</Text>
                                     </LinearGradient>
-                                )}
-                                <Text style={styles.profileName}>{user?.name ?? 'Anonymous'}</Text>
+                                </BlurView>
                             </View>
-
 
                             {/* Profile Options */}
                             <View style={styles.profileOptionsContainer}>
@@ -700,7 +674,7 @@ export default function HomeScreen() {
                                     iconName="person-outline"
                                     title="Personal Information"
                                     subtitle="Manage your personal details"
-                                    gradientColors={['#4facfe', '#00f2fe']}
+                                    gradientColors={['rgba(79, 172, 254, 0.8)', 'rgba(0, 242, 254, 0.8)']}
                                     onPress={() => navigation.navigate('profileUpdate')}
                                 />
 
@@ -708,7 +682,7 @@ export default function HomeScreen() {
                                     iconName="settings-outline"
                                     title="Settings"
                                     subtitle="App preferences and configurations"
-                                    gradientColors={['#667eea', '#764ba2']}
+                                    gradientColors={['rgba(102, 126, 234, 0.8)', 'rgba(118, 75, 162, 0.8)']}
                                     onPress={() => navigation.navigate('Settings')}
                                 />
 
@@ -716,15 +690,15 @@ export default function HomeScreen() {
                                     iconName="wallet-outline"
                                     title="Cold Wallet"
                                     subtitle="Secure cryptocurrency storage"
-                                    gradientColors={['#f093fb', '#f5576c']}
-                                    onPress={() => navigation.navigate('ColdWallet')}
+                                    gradientColors={['rgba(240, 147, 251, 0.8)', 'rgba(245, 87, 108, 0.8)']}
+                                    onPress={() => navigation.navigate('Web3Wallet')}
                                 />
 
                                 {/* Logout Button */}
                                 <View style={styles.logoutSection}>
                                     <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
                                         <LinearGradient
-                                            colors={['#ff6b6b', '#ee5a52']}
+                                            colors={['rgba(255, 107, 107, 0.8)', 'rgba(238, 90, 82, 0.8)']}
                                             style={styles.logoutGradient}
                                         >
                                             <Ionicons name="log-out-outline" size={20} color="#ffffff" />
@@ -742,92 +716,132 @@ export default function HomeScreen() {
     };
 
     return (
-        <View style={styles.container}>
-            <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+        <SafeAreaView style={styles.container}>
+            {/* Background Gradient */}
+            <LinearGradient
+                colors={['#1a1f3a', '#2d3561', '#4c5aa3', '#7b4397', '#dc2430']}
+                style={styles.backgroundGradient}
+            />
+
+            <StatusBar
+                barStyle="light-content"
+                backgroundColor="transparent"
+                translucent={true}
+            />
 
             {/* Main Content */}
             <View style={styles.mainContent}>
                 {renderTabContent()}
             </View>
 
-            {/* Bottom Tab Bar */}
-            <View style={styles.tabBar}>
-                <TabButton
-                    iconName="home"
-                    label="Home"
-                    isActive={activeTab === 0}
-                    onPress={() => setActiveTab(0)}
-                />
-                <TabButton
-                    iconName="heart"
-                    label="Matches"
-                    isActive={activeTab === 1}
-                    onPress={() => setActiveTab(1)}
-                />
-                <TabButton
-                    iconName="chatbubbles"
-                    label="Messages"
-                    isActive={activeTab === 2}
-                    onPress={() => setActiveTab(2)}
-                />
-                <TabButton
-                    iconName="person"
-                    label="Profile"
-                    isActive={activeTab === 3}
-                    onPress={() => setActiveTab(3)}
-                />
-            </View>
-        </View>
+            {/* Bottom Tab Bar with Blur */}
+            <BlurView intensity={20} style={[
+                styles.tabBar,
+                {
+                    paddingBottom: insets.bottom > 0 ? insets.bottom : 20,
+                    height: 90 + (insets.bottom > 0 ? insets.bottom : 0)
+                }
+            ]}>
+                <LinearGradient
+                    colors={['rgba(26, 31, 58, 0.8)', 'rgba(45, 53, 97, 0.6)']}
+                    style={styles.tabBarGradient}
+                >
+                    <TabButton
+                        iconName="home"
+                        label="Home"
+                        isActive={activeTab === 0}
+                        onPress={() => setActiveTab(0)}
+                    />
+                    <TabButton
+                        iconName="heart"
+                        label="Matches"
+                        isActive={activeTab === 1}
+                        onPress={() => setActiveTab(1)}
+                    />
+                    <TabButton
+                        iconName="chatbubbles"
+                        label="Messages"
+                        isActive={activeTab === 2}
+                        onPress={() => setActiveTab(2)}
+                    />
+                    <TabButton
+                        iconName="person"
+                        label="Profile"
+                        isActive={activeTab === 3}
+                        onPress={() => setActiveTab(3)}
+                    />
+                </LinearGradient>
+            </BlurView>
+        </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f8fafc',
+        backgroundColor: '#1a1f3a',
+    },
+    backgroundGradient: {
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        top: 0,
+        bottom: 0,
     },
     mainContent: {
         flex: 1,
-        paddingBottom: 120, // More space for larger bottom tab bar
+        paddingBottom: 0,
     },
     header: {
+        marginHorizontal: 20,
+        marginTop: 20,
+        marginBottom: 16,
+        borderRadius: 20,
+        overflow: 'hidden',
+    },
+    headerBlur: {
+        borderRadius: 20,
+        overflow: 'hidden',
+    },
+    headerGradient: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
         paddingHorizontal: 24,
         paddingTop: 20,
         paddingBottom: 20,
-        backgroundColor: '#ffffff',
-        marginBottom: 16,
+        minHeight: 80,
     },
     headerLeft: {
         flex: 1,
+        justifyContent: 'center',
     },
     greeting: {
         fontSize: 16,
-        color: '#6b7280',
+        color: 'rgba(255,255,255,0.8)',
         marginBottom: 4,
         fontWeight: '500',
     },
     userName: {
         fontSize: 28,
         fontWeight: 'bold',
-        color: '#1f2937',
+        color: '#ffffff',
         marginBottom: 4,
     },
     timeText: {
         fontSize: 14,
-        color: '#9ca3af',
+        color: 'rgba(255,255,255,0.7)',
         fontWeight: '500',
     },
     profileButton: {
         borderRadius: 25,
         overflow: 'hidden',
-        shadowColor: '#667eea',
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.3,
         shadowRadius: 4,
         elevation: 3,
+        alignSelf: 'center',
     },
     profileGradient: {
         width: 50,
@@ -851,7 +865,7 @@ const styles = StyleSheet.create({
     },
     statCard: {
         flex: 1,
-        backgroundColor: '#ffffff',
+        backgroundColor: 'rgba(255,255,255,0.15)',
         borderRadius: 16,
         padding: 16,
         marginHorizontal: 4,
@@ -869,13 +883,13 @@ const styles = StyleSheet.create({
     },
     statLabel: {
         fontSize: 12,
-        color: '#6b7280',
+        color: 'rgba(255,255,255,0.7)',
         fontWeight: '500',
     },
     sectionTitle: {
         fontSize: 22,
         fontWeight: 'bold',
-        color: '#1f2937',
+        color: '#ffffff',
         marginBottom: 16,
         letterSpacing: 0.5,
     },
@@ -998,38 +1012,32 @@ const styles = StyleSheet.create({
         borderTopColor: 'transparent',
     },
     bottomSpacing: {
-        height: 140, // More space for larger bottom tab bar
+        height: 120,
     },
-    // Tab Bar Styles
+    // Tab Bar Styles - 优化为透明玻璃效果
     tabBar: {
-        flexDirection: 'row',
-        backgroundColor: '#ffffff',
-        paddingVertical: 16,
-        paddingHorizontal: 0,
-        paddingBottom: 30,
-        borderTopWidth: 1,
-        borderTopColor: '#e5e7eb',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: -2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 8,
         position: 'absolute',
         bottom: 0,
         left: 0,
         right: 0,
-        height: 90,
-        width: '100%', // Ensure full width
+        borderTopWidth: 0,
+        backgroundColor: 'transparent',
+        overflow: 'hidden',
+    },
+    tabBarGradient: {
+        flexDirection: 'row',
+        paddingVertical: 16,
+        paddingHorizontal: 0,
+        minHeight: 90,
     },
     tabButton: {
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
         paddingVertical: 12,
-        paddingHorizontal: 0,
+        paddingHorizontal: 4,
         position: 'relative',
         minHeight: 60,
-        width: '25%',
     },
     tabButtonInner: {
         alignItems: 'center',
@@ -1042,6 +1050,7 @@ const styles = StyleSheet.create({
         fontSize: 13,
         fontWeight: '600',
         marginTop: 6,
+        textAlign: 'center',
     },
     activeIndicator: {
         position: 'absolute',
@@ -1049,7 +1058,7 @@ const styles = StyleSheet.create({
         width: 6,
         height: 6,
         borderRadius: 3,
-        backgroundColor: '#10b981',
+        backgroundColor: '#ffffff',
     },
     // Tab Content Styles
     tabContent: {
@@ -1061,19 +1070,18 @@ const styles = StyleSheet.create({
     tabContentTitle: {
         fontSize: 24,
         fontWeight: 'bold',
-        color: '#1f2937',
+        color: '#ffffff',
         marginBottom: 8,
     },
     tabContentSubtitle: {
         fontSize: 16,
-        color: '#6b7280',
+        color: 'rgba(255,255,255,0.8)',
         textAlign: 'center',
         marginBottom: 32,
     },
-    // Profile Tab Styles
+    // Profile Tab Styles - 优化为玻璃拟态
     profileScrollView: {
         flex: 1,
-        backgroundColor: '#f8fafc',
     },
     profileScrollContent: {
         paddingBottom: 140,
@@ -1083,47 +1091,41 @@ const styles = StyleSheet.create({
         paddingHorizontal: 24,
         paddingTop: 20,
     },
-    profileHeader: {
+    profileAvatarContainer: {
+        marginBottom: 24,
+        borderRadius: 20,
+        overflow: 'hidden',
+    },
+    profileAvatarBlur: {
+        borderRadius: 20,
+        overflow: 'hidden',
+    },
+    profileAvatarGradient: {
         alignItems: 'center',
         paddingVertical: 32,
-        backgroundColor: '#ffffff',
-        borderRadius: 20,
-        marginBottom: 24,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 8,
-        elevation: 3,
-    },
-    profileAvatarContainer: {
-        alignItems: 'center',
-        borderRadius: 40,
-        overflow: 'hidden',
-        marginBottom: 16,
-        shadowColor: '#667eea',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 5,
+        paddingHorizontal: 20,
     },
     profileAvatar: {
-        width: 80,
-        height: 80,
+        width: 150,
+        height: 150,
+        borderRadius: 75,
         justifyContent: 'center',
         alignItems: 'center',
+        marginBottom: 16,
     },
     profileName: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: 34,
+        fontSize: 28,
         fontWeight: 'bold',
-        color: '#1f2937',
-        marginBottom: 4,
+        color: '#ffffff',
+        textAlign: 'center',
+        marginTop: 8,
     },
     profileEmail: {
         fontSize: 16,
-        color: '#6b7280',
+        color: 'rgba(255,255,255,0.8)',
         fontWeight: '500',
+        textAlign: 'center',
+        marginTop: 4,
     },
     profileOptionsContainer: {
         flex: 1,
@@ -1162,10 +1164,15 @@ const styles = StyleSheet.create({
     profileImage: {
         width: 150,
         height: 150,
-        borderRadius: 50,
-        borderWidth: 2,
-        borderColor: '#fff',
-        marginBottom: 10, // 与名字之间留点空隙
+        borderRadius: 75,
+        borderWidth: 4,
+        borderColor: 'rgba(255,255,255,0.3)',
+        marginBottom: 10,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+        elevation: 5,
     },
     profileOptionTitle: {
         fontSize: 18,
@@ -1213,6 +1220,4 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         marginLeft: 8,
     },
-
-
 });

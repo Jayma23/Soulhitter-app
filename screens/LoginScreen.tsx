@@ -15,6 +15,7 @@ import * as SecureStore from 'expo-secure-store';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useUser } from './UserContext';
+
 // 定义导航类型
 type RootStackParamList = {
     Login: {
@@ -38,7 +39,6 @@ export default function LoginScreen() {
     const [password, setPassword] = useState('');
     const [isPasswordVisible, setIsPasswordVisible] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
-
 
     // 处理预填数据
     useEffect(() => {
@@ -87,7 +87,6 @@ export default function LoginScreen() {
             }
 
             // 保存登录信息到 SecureStore
-
             console.log(data.photo, "cwecevwe")
 
             // 保存邮箱
@@ -104,7 +103,6 @@ export default function LoginScreen() {
                 user_id: String(data.user_id),
                 token: data.token ?? null,
             });
-
 
             console.log('✅ Login Success:', data);
 
@@ -150,31 +148,33 @@ export default function LoginScreen() {
             style={styles.container}
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
-            <StatusBar barStyle="light-content" backgroundColor="#667eea" />
+            <StatusBar barStyle="light-content" backgroundColor="#1a1b3a" />
 
             <LinearGradient
-                colors={['#667eea', '#764ba2']}
+                colors={['#1a1b3a', '#2d1b69', '#4a1942', '#8b5a2b']}
                 style={StyleSheet.absoluteFillObject}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
             />
 
             <View style={styles.contentContainer}>
                 {/* Logo Section */}
                 <View style={styles.logoContainer}>
                     <View style={styles.logoCircle}>
-                        <Ionicons name="person" size={40} color="#ffffff" />
+                        <Ionicons name="sparkles" size={40} color="#ffffff" />
                     </View>
-                    <Text style={styles.logoText}>Welcome Back</Text>
-                    <Text style={styles.subtitleText}>Sign in to your account</Text>
+                    <Text style={styles.logoText}>SOUL HITTER</Text>
+                    <Text style={styles.subtitleText}>Strike the power within your soul, unleash your infinite potential</Text>
                 </View>
 
                 {/* Form Section */}
                 <View style={styles.formContainer}>
                     {/* Email Input */}
                     <View style={styles.inputContainer}>
-                        <Ionicons name="mail" size={20} color="#9ca3af" style={styles.inputIcon} />
+                        <Ionicons name="mail" size={20} color="#ff6b4a" style={styles.inputIcon} />
                         <TextInput
                             placeholder="Email Address"
-                            placeholderTextColor="#9ca3af"
+                            placeholderTextColor="#a0a0a0"
                             style={styles.input}
                             autoCapitalize="none"
                             keyboardType="email-address"
@@ -189,10 +189,10 @@ export default function LoginScreen() {
 
                     {/* Password Input */}
                     <View style={styles.inputContainer}>
-                        <Ionicons name="lock-closed" size={20} color="#9ca3af" style={styles.inputIcon} />
+                        <Ionicons name="lock-closed" size={20} color="#ff6b4a" style={styles.inputIcon} />
                         <TextInput
                             placeholder="Password"
-                            placeholderTextColor="#9ca3af"
+                            placeholderTextColor="#a0a0a0"
                             style={styles.input}
                             secureTextEntry={!isPasswordVisible}
                             value={password}
@@ -209,7 +209,7 @@ export default function LoginScreen() {
                             <Ionicons
                                 name={isPasswordVisible ? 'eye-off' : 'eye'}
                                 size={20}
-                                color="#9ca3af"
+                                color="#ff6b4a"
                             />
                         </TouchableOpacity>
                     </View>
@@ -226,11 +226,13 @@ export default function LoginScreen() {
                         activeOpacity={0.8}
                     >
                         <LinearGradient
-                            colors={isLoading ? ['#9ca3af', '#6b7280'] : ['#667eea', '#764ba2']}
+                            colors={isLoading ? ['#a0a0a0', '#808080'] : ['#ff6b4a', '#e74c3c', '#9b59b6', '#6f42c1']}
                             style={styles.buttonGradient}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 0 }}
                         >
                             <Text style={styles.buttonText}>
-                                {isLoading ? 'Signing In...' : 'Sign In'}
+                                {isLoading ? 'Signing In...' : 'Start Exploring'}
                             </Text>
                         </LinearGradient>
                     </TouchableOpacity>
@@ -244,8 +246,13 @@ export default function LoginScreen() {
 
                     {/* Google Button */}
                     <TouchableOpacity style={styles.socialButton} activeOpacity={0.7}>
-                        <Ionicons name="logo-google" size={20} color="#667eea" />
-                        <Text style={styles.socialButtonText}>Sign in with Google</Text>
+                        <LinearGradient
+                            colors={['#ffffff', '#f8f9fa']}
+                            style={styles.socialButtonGradient}
+                        >
+                            <Ionicons name="logo-google" size={20} color="#ff6b4a" />
+                            <Text style={styles.socialButtonText}>Continue with Google</Text>
+                        </LinearGradient>
                     </TouchableOpacity>
 
                     {/* Sign Up Link */}
@@ -255,7 +262,7 @@ export default function LoginScreen() {
                         activeOpacity={0.7}
                     >
                         <Text style={styles.signupText}>
-                            Don't have an account? <Text style={styles.signupLink}>Sign up</Text>
+                            New to Soul Hitter? <Text style={styles.signupLink}>Join the journey</Text>
                         </Text>
                     </TouchableOpacity>
                 </View>
@@ -278,126 +285,162 @@ const styles = StyleSheet.create({
         marginBottom: 40,
     },
     logoCircle: {
-        width: 80,
-        height: 80,
-        borderRadius: 40,
-        backgroundColor: 'rgba(255,255,255,0.2)',
+        width: 90,
+        height: 90,
+        borderRadius: 45,
+        backgroundColor: 'rgba(255,255,255,0.25)',
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 20,
-    },
-    logoText: {
-        fontSize: 28,
-        fontWeight: 'bold',
-        color: '#ffffff',
-        marginBottom: 8,
-    },
-    subtitleText: {
-        fontSize: 16,
-        color: 'rgba(255,255,255,0.8)',
-    },
-    formContainer: {
-        backgroundColor: 'rgba(255,255,255,0.95)',
-        borderRadius: 20,
-        padding: 24,
         shadowColor: '#000',
         shadowOffset: {
             width: 0,
-            height: 10,
+            height: 4,
         },
-        shadowOpacity: 0.25,
-        shadowRadius: 20,
-        elevation: 10,
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 8,
+    },
+    logoText: {
+        fontSize: 32,
+        fontWeight: 'bold',
+        color: '#ffffff',
+        marginBottom: 8,
+        textShadowColor: 'rgba(0, 0, 0, 0.3)',
+        textShadowOffset: { width: 1, height: 1 },
+        textShadowRadius: 3,
+        letterSpacing: 2,
+    },
+    subtitleText: {
+        fontSize: 16,
+        color: 'rgba(255,255,255,0.9)',
+        textAlign: 'center',
+        fontWeight: '500',
+    },
+    formContainer: {
+        backgroundColor: 'rgba(255,255,255,0.98)',
+        borderRadius: 25,
+        padding: 28,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 15,
+        },
+        shadowOpacity: 0.35,
+        shadowRadius: 25,
+        elevation: 15,
     },
     inputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#f9fafb',
-        borderRadius: 12,
-        marginBottom: 16,
-        paddingHorizontal: 16,
-        borderWidth: 1,
-        borderColor: '#e5e7eb',
+        backgroundColor: 'rgba(255,255,255,0.95)',
+        borderRadius: 15,
+        marginBottom: 18,
+        paddingHorizontal: 18,
+        borderWidth: 2,
+        borderColor: 'transparent',
     },
     inputIcon: {
-        marginRight: 12,
+        marginRight: 15,
     },
     input: {
         flex: 1,
-        paddingVertical: 16,
+        paddingVertical: 18,
         fontSize: 16,
-        color: '#1f2937',
+        color: '#2d3748',
+        fontWeight: '500',
     },
     eyeIcon: {
-        padding: 4,
+        padding: 6,
     },
     forgotPasswordContainer: {
         alignItems: 'flex-end',
-        marginBottom: 24,
+        marginBottom: 28,
     },
     forgotPasswordText: {
-        color: '#667eea',
+        color: '#ff6b4a',
         fontSize: 14,
-        fontWeight: '500',
+        fontWeight: '600',
     },
     loginButton: {
-        borderRadius: 12,
+        borderRadius: 15,
         overflow: 'hidden',
-        marginBottom: 20,
+        marginBottom: 24,
+        shadowColor: '#ff6b4a',
+        shadowOffset: {
+            width: 0,
+            height: 6,
+        },
+        shadowOpacity: 0.4,
+        shadowRadius: 12,
+        elevation: 8,
     },
     loginButtonDisabled: {
         opacity: 0.7,
     },
     buttonGradient: {
-        paddingVertical: 16,
+        paddingVertical: 18,
         alignItems: 'center',
     },
     buttonText: {
         color: '#ffffff',
-        fontSize: 16,
-        fontWeight: '600',
+        fontSize: 17,
+        fontWeight: '700',
+        letterSpacing: 0.5,
     },
     dividerContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginVertical: 20,
+        marginVertical: 24,
     },
     divider: {
         flex: 1,
         height: 1,
-        backgroundColor: '#e5e7eb',
+        backgroundColor: '#e2e8f0',
     },
     dividerText: {
-        marginHorizontal: 16,
-        color: '#6b7280',
+        marginHorizontal: 20,
+        color: '#718096',
         fontSize: 14,
+        fontWeight: '500',
     },
     socialButton: {
+        borderRadius: 15,
+        overflow: 'hidden',
+        marginBottom: 28,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 3,
+        },
+        shadowOpacity: 0.1,
+        shadowRadius: 6,
+        elevation: 4,
+    },
+    socialButtonGradient: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#ffffff',
-        borderRadius: 12,
         paddingVertical: 16,
         borderWidth: 1,
-        borderColor: '#e5e7eb',
-        marginBottom: 24,
+        borderColor: '#e2e8f0',
     },
     socialButtonText: {
-        color: '#667eea',
+        color: '#2d3748',
         fontSize: 16,
-        fontWeight: '500',
-        marginLeft: 8,
+        fontWeight: '600',
+        marginLeft: 10,
     },
     signupContainer: {
         alignItems: 'center',
     },
     signupText: {
-        color: '#6b7280',
-        fontSize: 14,
+        color: '#718096',
+        fontSize: 15,
+        fontWeight: '500',
     },
     signupLink: {
-        color: '#667eea',
-        fontWeight: '600',
+        color: '#ff6b4a',
+        fontWeight: '700',
     },
 });

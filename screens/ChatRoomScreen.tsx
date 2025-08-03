@@ -223,12 +223,24 @@ export default function InstagramChatRoom() {
         try {
             console.log("Checking online status for user:", partner.user_id);
             const res = await fetch(`https://ccbackendx-2.onrender.com/user/${partner.user_id}/online-status`);
+
+            // 检查响应类型是不是 JSON
+            const contentType = res.headers.get("content-type");
+            if (!res.ok) {
+                throw new Error(`HTTP error! status: ${res.status}`);
+            }
+            if (!contentType || !contentType.includes("application/json")) {
+                throw new Error("Unexpected response format");
+            }
+
             const data = await res.json();
             setIsPartnerOnline(data.isOnline);
         } catch (err) {
-            console.error('Failed to fetch online status', err);
+            console.error("Failed to fetch online status:", err);
+            setIsPartnerOnline(false); // 设置为 false 避免卡住
         }
     };
+
     useEffect(() => {
         if (partner?.user_id) {
             checkPartnerOnline();

@@ -10,7 +10,8 @@ import {
     RefreshControl,
     Dimensions,
     Animated,
-    Platform
+    Platform,
+    Alert
 } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { useNavigation } from '@react-navigation/native';
@@ -34,9 +35,9 @@ export default function ChatListScreen() {
     const [chatList, setChatList] = useState<ChatItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [hiddenChats, setHiddenChats] = useState<Set<string>>(new Set());
     const navigation = useNavigation<any>();
 
-    // 隐藏默认的导航头部
     React.useLayoutEffect(() => {
         navigation.setOptions({
             headerShown: false,
@@ -45,7 +46,27 @@ export default function ChatListScreen() {
 
     useEffect(() => {
         fetchChats();
+        loadHiddenChats();
     }, []);
+
+    const loadHiddenChats = async () => {
+        try {
+            const hidden = await SecureStore.getItemAsync('hidden_chats');
+            if (hidden) {
+                setHiddenChats(new Set(JSON.parse(hidden)));
+            }
+        } catch (err) {
+            console.error('Failed to load hidden chats:', err);
+        }
+    };
+
+    const saveHiddenChats = async (hiddenSet: Set<string>) => {
+        try {
+            await SecureStore.setItemAsync('hidden_chats', JSON.stringify(Array.from(hiddenSet)));
+        } catch (err) {
+            console.error('Failed to save hidden chats:', err);
+        }
+    };
 
     const fetchChats = async () => {
         const userId = await SecureStore.getItemAsync('user_id');
@@ -61,6 +82,100 @@ export default function ChatListScreen() {
             setLoading(false);
             setRefreshing(false);
         }
+    };
+
+    const deleteChat = async (chatId: string) => {
+        const userId = await SecureStore.getItemAsync('user_id');
+        if (!userId) return;
+
+        try {
+            const res = await fetch(`https://ccbackendx-2.onrender.com/chatroom/delete`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    chat_id: chatId,
+                    user_id: userId
+                })
+            });
+
+            if (res.ok) {
+                setChatList(prevList => prevList.filter(chat => chat.chat_id !== chatId));
+                // 同时从隐藏列表中移除
+                const newHiddenChats = new Set(hiddenChats);
+                newHiddenChats.delete(chatId);
+                setHiddenChats(newHiddenChats);
+                saveHiddenChats(newHiddenChats);
+            } else {
+                Alert.alert('Error', 'Failed to delete chat. Please try again.');
+            }
+        } catch (err) {
+            console.error('Failed to delete chat:', err);
+            Alert.alert('Error', 'Failed to delete chat. Please try again.');
+        }
+    };
+
+    const hideChat = (chatId: string) => {
+        const newHiddenChats = new Set(hiddenChats);
+        newHiddenChats.add(chatId);
+        setHiddenChats(newHiddenChats);
+        saveHiddenChats(newHiddenChats);
+    };
+
+    const unhideChat = (chatId: string) => {
+        const newHiddenChats = new Set(hiddenChats);
+        newHiddenChats.delete(chatId);
+        setHiddenChats(newHiddenChats);
+        saveHiddenChats(newHiddenChats);
+    };
+
+    const showChatOptions = (item: ChatItem) => {
+        const isHidden = hiddenChats.has(item.chat_id);
+
+        Alert.alert(
+            'Chat Options',
+            `What would you like to do with ${item.partner_name}'s conversation?`,
+            [
+                {
+                    text: 'Cancel',
+                    style: 'cancel',
+                },
+                {
+                    text: isHidden ? 'Unhide Chat' : 'Hide Chat',
+                    onPress: () => {
+                        if (isHidden) {
+                            unhideChat(item.chat_id);
+                        } else {
+                            hideChat(item.chat_id);
+                        }
+                    },
+                },
+                {
+                    text: 'Delete Forever',
+                    style: 'destructive',
+                    onPress: () => confirmDeleteChat(item.chat_id, item.partner_name),
+                },
+            ]
+        );
+    };
+
+    const confirmDeleteChat = (chatId: string, partnerName: string) => {
+        Alert.alert(
+            'Delete Conversation',
+            `Are you sure you want to permanently delete your conversation with ${partnerName}? This action cannot be undone.`,
+            [
+                {
+                    text: 'Cancel',
+                    style: 'cancel',
+                },
+                {
+                    text: 'Delete Forever',
+                    style: 'destructive',
+                    onPress: () => deleteChat(chatId),
+                },
+            ]
+        );
     };
 
     const onRefresh = () => {
@@ -79,7 +194,7 @@ export default function ChatListScreen() {
             return 'Just now';
         } else if (diffInHours < 24) {
             return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        } else if (diffInHours < 168) { // Less than a week
+        } else if (diffInHours < 168) {
             return date.toLocaleDateString([], { weekday: 'short' });
         } else {
             return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
@@ -90,10 +205,15 @@ export default function ChatListScreen() {
         return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
     };
 
-    const AnimatedChatItem = ({ item, index }: { item: ChatItem; index: number }) => {
+    // 过滤显示的聊天列表
+    const visibleChats = chatList.filter(chat => !hiddenChats.has(chat.chat_id));
+    const hiddenChatsCount = chatList.filter(chat => hiddenChats.has(chat.chat_id)).length;
+
+    const ChatItem = ({ item, index }: { item: ChatItem; index: number }) => {
         const scaleAnim = new Animated.Value(1);
         const fadeAnim = new Animated.Value(0);
         const slideAnim = new Animated.Value(50);
+        const isHidden = hiddenChats.has(item.chat_id);
 
         useEffect(() => {
             Animated.parallel([
@@ -126,35 +246,47 @@ export default function ChatListScreen() {
             }).start();
         };
 
+        const handlePress = () => {
+            navigation.navigate('ChatRoom', {
+                chatId: item.chat_id,
+                partner: {
+                    user_id: item.partner_id,
+                    name: item.partner_name,
+                    photo: item.partner_photo,
+                }
+            });
+        };
+
+        const handleLongPress = () => {
+            showChatOptions(item);
+        };
+
         return (
             <Animated.View
                 style={[
                     styles.chatItemWrapper,
                     {
                         opacity: fadeAnim,
-                        transform: [
-                            { translateX: slideAnim },
-                            { scale: scaleAnim }
-                        ]
+                        transform: [{ translateX: slideAnim }]
                     }
                 ]}
             >
                 <AnimatedTouchableOpacity
-                    style={styles.chatItem}
-                    onPress={() => navigation.navigate('ChatRoom', {
-                        chatId: item.chat_id,
-                        partner: {
-                            user_id: item.partner_id,
-                            name: item.partner_name,
-                            photo: item.partner_photo,
+                    style={[
+                        styles.chatItem,
+                        isHidden && styles.hiddenChatItem,
+                        {
+                            transform: [{ scale: scaleAnim }]
                         }
-                    })}
+                    ]}
+                    onPress={handlePress}
                     onPressIn={handlePressIn}
                     onPressOut={handlePressOut}
-                    activeOpacity={1}
+                    onLongPress={handleLongPress}
+                    activeOpacity={0.7}
                 >
                     <LinearGradient
-                        colors={['#ffffff', '#f8fafc']}
+                        colors={isHidden ? ['#f1f5f9', '#e2e8f0'] : ['#ffffff', '#f8fafc']}
                         style={styles.chatGradient}
                     >
                         <View style={styles.chatContent}>
@@ -162,20 +294,20 @@ export default function ChatListScreen() {
                                 {item.partner_photo ? (
                                     <View style={styles.avatarWrapper}>
                                         <LinearGradient
-                                            colors={['#667eea', '#764ba2', '#f093fb']}
+                                            colors={isHidden ? ['#94a3b8', '#64748b'] : ['#667eea', '#764ba2', '#f093fb']}
                                             style={styles.avatarRing}
                                         >
                                             <View style={styles.avatarInner}>
                                                 <Image
                                                     source={{ uri: item.partner_photo }}
-                                                    style={styles.avatar}
+                                                    style={[styles.avatar, isHidden && styles.hiddenAvatar]}
                                                 />
                                             </View>
                                         </LinearGradient>
                                     </View>
                                 ) : (
                                     <LinearGradient
-                                        colors={['#667eea', '#764ba2']}
+                                        colors={isHidden ? ['#94a3b8', '#64748b'] : ['#667eea', '#764ba2']}
                                         style={styles.avatarPlaceholder}
                                     >
                                         <Text style={styles.avatarInitials}>
@@ -183,21 +315,26 @@ export default function ChatListScreen() {
                                         </Text>
                                     </LinearGradient>
                                 )}
-                                <View style={styles.onlineIndicator}>
+                                <View style={[styles.onlineIndicator, isHidden && styles.hiddenOnlineIndicator]}>
                                     <View style={styles.onlinePulse} />
                                 </View>
+                                {isHidden && (
+                                    <View style={styles.hiddenBadge}>
+                                        <Ionicons name="eye-off" size={12} color="#ffffff" />
+                                    </View>
+                                )}
                             </View>
 
                             <View style={styles.chatTextContainer}>
                                 <View style={styles.nameTimeRow}>
-                                    <Text style={styles.name} numberOfLines={1}>
+                                    <Text style={[styles.name, isHidden && styles.hiddenText]} numberOfLines={1}>
                                         {item.partner_name}
                                     </Text>
                                     <View style={styles.timeContainer}>
-                                        <Text style={styles.time}>
+                                        <Text style={[styles.time, isHidden && styles.hiddenTime]}>
                                             {formatTime(item.last_updated)}
                                         </Text>
-                                        {!item.last_message && (
+                                        {!item.last_message && !isHidden && (
                                             <View style={styles.newIndicator}>
                                                 <View style={styles.newIndicatorPulse} />
                                             </View>
@@ -206,10 +343,10 @@ export default function ChatListScreen() {
                                 </View>
 
                                 <View style={styles.messageRow}>
-                                    <Text numberOfLines={2} style={styles.lastMessage}>
-                                        {item.last_message || '👋 Say hello to start chatting!'}
+                                    <Text numberOfLines={2} style={[styles.lastMessage, isHidden && styles.hiddenText]}>
+                                        {isHidden ? 'Hidden conversation' : (item.last_message || '👋 Say hello to start chatting!')}
                                     </Text>
-                                    {!item.last_message && (
+                                    {!item.last_message && !isHidden && (
                                         <LinearGradient
                                             colors={['#667eea', '#764ba2']}
                                             style={styles.newChatBadge}
@@ -221,12 +358,37 @@ export default function ChatListScreen() {
                             </View>
 
                             <View style={styles.chevronContainer}>
-                                <Ionicons name="chevron-forward" size={20} color="#c7d2fe" />
+                                <Ionicons
+                                    name="chevron-forward"
+                                    size={20}
+                                    color={isHidden ? "#94a3b8" : "#c7d2fe"}
+                                />
                             </View>
                         </View>
                     </LinearGradient>
                 </AnimatedTouchableOpacity>
             </Animated.View>
+        );
+    };
+
+    const HiddenChatsHeader = () => {
+        if (hiddenChatsCount === 0) return null;
+
+        return (
+            <View style={styles.hiddenHeader}>
+                <LinearGradient
+                    colors={['#f1f5f9', '#e2e8f0']}
+                    style={styles.hiddenHeaderGradient}
+                >
+                    <Ionicons name="eye-off" size={16} color="#64748b" />
+                    <Text style={styles.hiddenHeaderText}>
+                        {hiddenChatsCount} hidden conversation{hiddenChatsCount > 1 ? 's' : ''}
+                    </Text>
+                    <Text style={styles.hiddenHeaderSubtext}>
+                        Long press to manage
+                    </Text>
+                </LinearGradient>
+            </View>
         );
     };
 
@@ -271,9 +433,12 @@ export default function ChatListScreen() {
                         <Ionicons name="chatbubbles" size={50} color="#ffffff" />
                     </LinearGradient>
                 </Animated.View>
-                <Text style={styles.emptyTitle}>No Conversations Yet</Text>
+                <Text style={styles.emptyTitle}>No Visible Conversations</Text>
                 <Text style={styles.emptySubtitle}>
-                    Start matching with people to begin your first conversation!
+                    {hiddenChatsCount > 0
+                        ? `You have ${hiddenChatsCount} hidden conversation${hiddenChatsCount > 1 ? 's' : ''}. Long press any chat to manage visibility.`
+                        : 'Start matching with people to begin your first conversation!'
+                    }
                 </Text>
                 <TouchableOpacity
                     style={styles.startMatchingButton}
@@ -294,38 +459,15 @@ export default function ChatListScreen() {
 
     const LoadingState = () => {
         const spinValue = new Animated.Value(0);
-        const scaleValue = new Animated.Value(1);
 
         useEffect(() => {
-            const spin = () => {
-                Animated.loop(
-                    Animated.timing(spinValue, {
-                        toValue: 1,
-                        duration: 2000,
-                        useNativeDriver: true,
-                    })
-                ).start();
-            };
-
-            const pulse = () => {
-                Animated.loop(
-                    Animated.sequence([
-                        Animated.timing(scaleValue, {
-                            toValue: 1.1,
-                            duration: 1000,
-                            useNativeDriver: true,
-                        }),
-                        Animated.timing(scaleValue, {
-                            toValue: 1,
-                            duration: 1000,
-                            useNativeDriver: true,
-                        }),
-                    ])
-                ).start();
-            };
-
-            spin();
-            pulse();
+            Animated.loop(
+                Animated.timing(spinValue, {
+                    toValue: 1,
+                    duration: 2000,
+                    useNativeDriver: true,
+                })
+            ).start();
         }, []);
 
         const spin = spinValue.interpolate({
@@ -335,27 +477,20 @@ export default function ChatListScreen() {
 
         return (
             <View style={styles.loadingContainer}>
-                <View style={styles.loadingContent}>
-                    <Animated.View
-                        style={[
-                            styles.loadingSpinner,
-                            {
-                                transform: [
-                                    { rotate: spin },
-                                    { scale: scaleValue }
-                                ]
-                            }
-                        ]}
+                <Animated.View
+                    style={[
+                        styles.loadingSpinner,
+                        { transform: [{ rotate: spin }] }
+                    ]}
+                >
+                    <LinearGradient
+                        colors={['#667eea', '#764ba2', '#f093fb']}
+                        style={styles.spinnerGradient}
                     >
-                        <LinearGradient
-                            colors={['#667eea', '#764ba2', '#f093fb']}
-                            style={styles.spinnerGradient}
-                        >
-                            <View style={styles.spinnerInner} />
-                        </LinearGradient>
-                    </Animated.View>
-                    <Text style={styles.loadingText}>Loading your conversations...</Text>
-                </View>
+                        <View style={styles.spinnerInner} />
+                    </LinearGradient>
+                </Animated.View>
+                <Text style={styles.loadingText}>Loading conversations...</Text>
             </View>
         );
     };
@@ -364,11 +499,17 @@ export default function ChatListScreen() {
         return <LoadingState />;
     }
 
+    // 合并可见和隐藏的聊天，隐藏的聊天排在后面
+    const allChats = [
+        ...visibleChats,
+        ...chatList.filter(chat => hiddenChats.has(chat.chat_id))
+    ];
+
     return (
         <View style={styles.container}>
             <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
 
-            {/* Header with gradient */}
+            {/* Header */}
             <LinearGradient
                 colors={['#ffffff', '#f8fafc']}
                 style={styles.headerGradient}
@@ -390,7 +531,7 @@ export default function ChatListScreen() {
                     <View style={styles.headerContent}>
                         <Text style={styles.headerTitle}>Messages</Text>
                         <Text style={styles.headerSubtitle}>
-                            {chatList.length} {chatList.length === 1 ? 'conversation' : 'conversations'}
+                            {visibleChats.length} visible{hiddenChatsCount > 0 ? `, ${hiddenChatsCount} hidden` : ''}
                         </Text>
                     </View>
 
@@ -400,12 +541,12 @@ export default function ChatListScreen() {
 
             {/* Chat List */}
             <FlatList
-                data={chatList}
+                data={allChats}
                 keyExtractor={(item) => item.chat_id}
-                renderItem={({ item, index }) => <AnimatedChatItem item={item} index={index} />}
+                renderItem={({ item, index }) => <ChatItem item={item} index={index} />}
                 contentContainerStyle={[
                     styles.listContainer,
-                    chatList.length === 0 && styles.emptyListContainer
+                    allChats.length === 0 && styles.emptyListContainer
                 ]}
                 showsVerticalScrollIndicator={false}
                 refreshControl={
@@ -418,6 +559,7 @@ export default function ChatListScreen() {
                     />
                 }
                 ListEmptyComponent={EmptyState}
+                ListHeaderComponent={visibleChats.length > 0 ? HiddenChatsHeader : null}
             />
         </View>
     );
@@ -475,6 +617,27 @@ const styles = StyleSheet.create({
     emptyListContainer: {
         flex: 1,
     },
+    hiddenHeader: {
+        marginBottom: 16,
+        borderRadius: 12,
+        overflow: 'hidden',
+    },
+    hiddenHeaderGradient: {
+        padding: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    hiddenHeaderText: {
+        fontSize: 14,
+        fontWeight: '600',
+        color: '#64748b',
+        marginLeft: 8,
+        flex: 1,
+    },
+    hiddenHeaderSubtext: {
+        fontSize: 12,
+        color: '#94a3b8',
+    },
     chatItemWrapper: {
         marginBottom: 16,
     },
@@ -489,6 +652,11 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 12,
         elevation: 8,
+        backgroundColor: '#ffffff',
+    },
+    hiddenChatItem: {
+        shadowColor: '#94a3b8',
+        shadowOpacity: 0.05,
     },
     chatGradient: {
         borderRadius: 20,
@@ -526,6 +694,9 @@ const styles = StyleSheet.create({
         height: 54,
         borderRadius: 27,
     },
+    hiddenAvatar: {
+        opacity: 0.6,
+    },
     avatarPlaceholder: {
         width: 60,
         height: 60,
@@ -551,11 +722,25 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
+    hiddenOnlineIndicator: {
+        backgroundColor: '#94a3b8',
+    },
     onlinePulse: {
         width: 8,
         height: 8,
         borderRadius: 4,
         backgroundColor: '#ffffff',
+    },
+    hiddenBadge: {
+        position: 'absolute',
+        top: -2,
+        left: -2,
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        backgroundColor: '#64748b',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     chatTextContainer: {
         flex: 1,
@@ -572,6 +757,9 @@ const styles = StyleSheet.create({
         color: '#1f2937',
         flex: 1,
     },
+    hiddenText: {
+        color: '#64748b',
+    },
     timeContainer: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -580,6 +768,9 @@ const styles = StyleSheet.create({
         color: '#9ca3af',
         fontSize: 12,
         fontWeight: '500',
+    },
+    hiddenTime: {
+        color: '#94a3b8',
     },
     newIndicator: {
         width: 12,
@@ -680,9 +871,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         backgroundColor: '#f8fafc',
-    },
-    loadingContent: {
-        alignItems: 'center',
     },
     loadingSpinner: {
         marginBottom: 24,

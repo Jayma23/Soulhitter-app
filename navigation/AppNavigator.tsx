@@ -12,9 +12,11 @@ import WaitingScreen from '../screens/WaitingScreen';
 import Card from '../screens/Card';
 import profileUpdate from '../screens/profileUpdate';
 import Settings from '../screens/Settings';
+import ChatListTabView from '../screens/ChatListTabView';
 import SmartReplyKeyboard from '../screens/SmartReplyKeyboard';
 import Preference from '../screens/Preference'
 import Gcard from '../screens/Gcard'
+import Web3Wallet from '../screens/Web3Wallet'
 export type RootStackParamList = {
     Login: undefined;
     Register: undefined;
@@ -29,6 +31,8 @@ export type RootStackParamList = {
     Settings: undefined;
     Preference: undefined;
     Gcard: undefined
+    ChatListTabView: undefined
+    Web3Wallet: undefined
 
 };
 
@@ -51,6 +55,10 @@ export default function App() {
             <Stack.Screen name="Settings" component={Settings} />
             <Stack.Screen name="Preference" component={Preference} />
             <Stack.Screen name="Gcard" component={Gcard} />
+
+            <Stack.Screen name="Web3Wallet" component={Web3Wallet} />
+
+            <Stack.Screen name="ChatListTabView" component={ChatListTabView} />
 
 
         </Stack.Navigator>

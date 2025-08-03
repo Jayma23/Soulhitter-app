@@ -130,7 +130,7 @@ export default function Settings() {
     const handleShareApp = async () => {
         try {
             const result = await Share.share({
-                message: 'Check out this amazing dating app! Download it now: https://yourapp.com/download',
+                message: 'Check out this amazing dating app! Download it now: https://soulhitter.com/download',
                 title: 'Join me on this amazing dating app!',
             });
         } catch (error) {
@@ -153,12 +153,12 @@ export default function Settings() {
 
                         const emailBody = `User ID: ${userId}\nUser Name: ${userName}\nDevice: ${Platform.OS}\nApp Version: 1.0.0\n\nDescription of issue:\n[Please describe your issue here]`;
 
-                        const emailUrl = `mailto:support@lovedateapp.com?subject=Support Request - Dating App&body=${encodeURIComponent(emailBody)}`;
+                        const emailUrl = `mailto:jamesma2324@berkeley.edu?subject=Support Request - Dating App&body=${encodeURIComponent(emailBody)}`;
 
                         try {
                             await Linking.openURL(emailUrl);
                         } catch (error) {
-                            Alert.alert('Error', 'Could not open email client. Please email us at: support@lovedateapp.com');
+                            Alert.alert('Error', 'Could not open email client. Please email us at: jamesma2324@berkeley.edu');
                         }
                     }
                 },

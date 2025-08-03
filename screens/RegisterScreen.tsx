@@ -59,7 +59,7 @@ const PasswordInput = React.memo(({
             <Ionicons
                 name="lock-closed"
                 size={20}
-                color={isFocused ? '#667eea' : '#9ca3af'}
+                color={isFocused ? '#ff6b4a' : '#9ca3af'}
                 style={styles.inputIcon}
             />
             <TextInput
@@ -80,7 +80,7 @@ const PasswordInput = React.memo(({
                 importantForAutofill="no"
                 keyboardType="default"
                 // 强制透明选择
-                selectionColor="#667eea"
+                selectionColor="#ff6b4a"
                 selectTextOnFocus={false}
                 editable={true}
                 // 手动处理密码显示
@@ -93,7 +93,7 @@ const PasswordInput = React.memo(({
                 <Ionicons
                     name={isVisible ? 'eye-off' : 'eye'}
                     size={20}
-                    color="#9ca3af"
+                    color="#ff6b4a"
                 />
             </TouchableOpacity>
         </View>
@@ -139,7 +139,7 @@ const CustomInput = React.memo(({
             <Ionicons
                 name={iconName}
                 size={20}
-                color={isFocused ? '#667eea' : '#9ca3af'}
+                color={isFocused ? '#ff6b4a' : '#9ca3af'}
                 style={styles.inputIcon}
             />
             <TextInput
@@ -160,7 +160,7 @@ const CustomInput = React.memo(({
                 importantForAutofill="no"
                 spellCheck={false}
                 // 强制清除所有可能导致高亮的属性
-                selectionColor="transparent"
+                selectionColor="#ff6b4a"
                 underlineColorAndroid="transparent"
                 // 对于密码框，使用特殊处理
                 {...(secureTextEntry && {
@@ -188,7 +188,7 @@ const CustomInput = React.memo(({
                                 : (isConfirmPasswordVisible ? 'eye-off' : 'eye')
                         }
                         size={20}
-                        color="#9ca3af"
+                        color="#ff6b4a"
                     />
                 </TouchableOpacity>
             )}
@@ -456,11 +456,13 @@ export default function RegisterScreen() {
 
     return (
         <View style={styles.container}>
-            <StatusBar barStyle="light-content" backgroundColor="#667eea" />
+            <StatusBar barStyle="light-content" backgroundColor="#1a1b3a" />
 
             <LinearGradient
-                colors={['#667eea', '#764ba2']}
+                colors={['#1a1b3a', '#2d1b69', '#4a1942', '#8b5a2b']}
                 style={StyleSheet.absoluteFillObject}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
             />
 
             <KeyboardAvoidingView
@@ -487,10 +489,10 @@ export default function RegisterScreen() {
                         {/* Logo区域 */}
                         <View style={styles.logoContainer}>
                             <View style={styles.logoCircle}>
-                                <Ionicons name="person-add" size={40} color="#ffffff" />
+                                <Ionicons name="sparkles" size={40} color="#ffffff" />
                             </View>
-                            <Text style={styles.logoText}>Create Account</Text>
-                            <Text style={styles.subtitleText}>Join us today</Text>
+                            <Text style={styles.logoText}>JOIN THE JOURNEY</Text>
+                            <Text style={styles.subtitleText}>Become part of the Soul Hitter community</Text>
                         </View>
 
                         {/* 表单区域 */}
@@ -561,7 +563,7 @@ export default function RegisterScreen() {
                                     )}
                                 </View>
                                 <Text style={styles.checkboxText}>
-                                    I agree to the <Text style={styles.termsLink}>Terms and Conditions</Text> and <Text style={styles.termsLink}>Privacy Policy</Text>
+                                    I agree to unleash my infinite potential and accept the <Text style={styles.termsLink}>Terms & Conditions</Text>
                                 </Text>
                             </TouchableOpacity>
 
@@ -572,7 +574,7 @@ export default function RegisterScreen() {
                                 activeOpacity={0.8}
                             >
                                 <LinearGradient
-                                    colors={isLoading ? ['#9ca3af', '#6b7280'] : ['#667eea', '#764ba2']}
+                                    colors={isLoading ? ['#9ca3af', '#6b7280'] : ['#ff6b4a', '#e74c3c', '#9b59b6', '#6f42c1']}
                                     style={styles.buttonGradient}
                                 >
                                     {isLoading ? (
@@ -590,10 +592,10 @@ export default function RegisterScreen() {
                                                     }
                                                 ]}
                                             />
-                                            <Text style={styles.buttonText}>Creating Account...</Text>
+                                            <Text style={styles.buttonText}>Creating Your Journey...</Text>
                                         </View>
                                     ) : (
-                                        <Text style={styles.buttonText}>Create Account</Text>
+                                        <Text style={styles.buttonText}>Begin Your Journey</Text>
                                     )}
                                 </LinearGradient>
                             </TouchableOpacity>
@@ -605,8 +607,8 @@ export default function RegisterScreen() {
                             </View>
 
                             <TouchableOpacity style={styles.socialButton} activeOpacity={0.7}>
-                                <Ionicons name="logo-google" size={20} color="#667eea" />
-                                <Text style={styles.socialButtonText}>Sign up with Google</Text>
+                                <Ionicons name="logo-google" size={20} color="#ff6b4a" />
+                                <Text style={styles.socialButtonText}>Continue with Google</Text>
                             </TouchableOpacity>
 
                             <TouchableOpacity
@@ -615,7 +617,7 @@ export default function RegisterScreen() {
                                 activeOpacity={0.7}
                             >
                                 <Text style={styles.loginText}>
-                                    Already have an account? <Text style={styles.loginLink}>Sign in</Text>
+                                    Already on the journey? <Text style={styles.loginLink}>Welcome back</Text>
                                 </Text>
                             </TouchableOpacity>
                         </View>
@@ -629,7 +631,7 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#667eea',
+        backgroundColor: '#1a1b3a',
     },
     keyboardAvoidingView: {
         flex: 1,
@@ -690,7 +692,7 @@ const styles = StyleSheet.create({
         borderColor: 'transparent',
     },
     inputFocused: {
-        borderColor: '#667eea',
+        borderColor: '#ff6b4a',
         backgroundColor: '#ffffff',
     },
     inputIcon: {
@@ -759,8 +761,8 @@ const styles = StyleSheet.create({
         marginTop: 2,
     },
     checkboxChecked: {
-        backgroundColor: '#667eea',
-        borderColor: '#667eea',
+        backgroundColor: '#ff6b4a',
+        borderColor: '#ff6b4a',
     },
     checkboxText: {
         flex: 1,
@@ -769,7 +771,7 @@ const styles = StyleSheet.create({
         lineHeight: 20,
     },
     termsLink: {
-        color: '#667eea',
+        color: '#ff6b4a',
         fontWeight: '500',
     },
     registerButton: {
@@ -829,7 +831,7 @@ const styles = StyleSheet.create({
         marginBottom: 24,
     },
     socialButtonText: {
-        color: '#667eea',
+        color: '#ff6b4a',
         fontSize: 16,
         fontWeight: '500',
         marginLeft: 8,
@@ -842,7 +844,7 @@ const styles = StyleSheet.create({
         fontSize: 14,
     },
     loginLink: {
-        color: '#667eea',
+        color: '#ff6b4a',
         fontWeight: '600',
     },
 });
