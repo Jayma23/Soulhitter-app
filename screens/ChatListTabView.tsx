@@ -8,8 +8,7 @@ import {
     StyleSheet,
     RefreshControl,
     Animated,
-    Dimensions,
-    Alert
+    Dimensions
 } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { useNavigation } from '@react-navigation/native';
@@ -42,32 +41,11 @@ export default function ChatListTabView({ onNavigateToFullList }: ChatListTabVie
     const [chatList, setChatList] = useState<ChatItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const [hiddenChats, setHiddenChats] = useState<Set<string>>(new Set());
     const navigation = useNavigation<any>();
 
     useEffect(() => {
         fetchChats();
-        loadHiddenChats();
     }, []);
-
-    const loadHiddenChats = async () => {
-        try {
-            const hidden = await SecureStore.getItemAsync('hidden_chats');
-            if (hidden) {
-                setHiddenChats(new Set(JSON.parse(hidden)));
-            }
-        } catch (err) {
-            console.error('Failed to load hidden chats:', err);
-        }
-    };
-
-    const saveHiddenChats = async (hiddenSet: Set<string>) => {
-        try {
-            await SecureStore.setItemAsync('hidden_chats', JSON.stringify(Array.from(hiddenSet)));
-        } catch (err) {
-            console.error('Failed to save hidden chats:', err);
-        }
-    };
 
     const fetchChats = async (): Promise<void> => {
         const userId = await SecureStore.getItemAsync('user_id');
@@ -83,98 +61,6 @@ export default function ChatListTabView({ onNavigateToFullList }: ChatListTabVie
             setLoading(false);
             setRefreshing(false);
         }
-    };
-
-    const deleteChat = async (chatId: string) => {
-        const userId = await SecureStore.getItemAsync('user_id');
-        if (!userId) return;
-
-        try {
-            const res = await fetch(`https://ccbackendx-2.onrender.com/chatroom/delete`, {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    chat_id: chatId,
-                    user_id: userId
-                })
-            });
-
-            if (res.ok) {
-                setChatList(prevList => prevList.filter(chat => chat.chat_id !== chatId));
-                // 同时从隐藏列表中移除
-                const newHiddenChats = new Set(hiddenChats);
-                newHiddenChats.delete(chatId);
-                setHiddenChats(newHiddenChats);
-                saveHiddenChats(newHiddenChats);
-            } else {
-                Alert.alert('Error', 'Failed to delete chat. Please try again.');
-            }
-        } catch (err) {
-            console.error('Failed to delete chat:', err);
-            Alert.alert('Error', 'Failed to delete chat. Please try again.');
-        }
-    };
-
-    const hideChat = (chatId: string) => {
-        console.log('Hiding chat:', chatId);
-        const newHiddenChats = new Set(hiddenChats);
-        newHiddenChats.add(chatId);
-        setHiddenChats(newHiddenChats);
-        saveHiddenChats(newHiddenChats);
-        console.log('Hidden chats updated:', Array.from(newHiddenChats));
-    };
-
-    const unhideChat = (chatId: string) => {
-        console.log('Unhiding chat:', chatId);
-        const newHiddenChats = new Set(hiddenChats);
-        newHiddenChats.delete(chatId);
-        setHiddenChats(newHiddenChats);
-        saveHiddenChats(newHiddenChats);
-        console.log('Hidden chats updated:', Array.from(newHiddenChats));
-    };
-
-    const showChatOptions = (item: ChatItem) => {
-        console.log('Showing options for:', item.partner_name);
-
-        Alert.alert(
-            'Chat Options',
-            `What would you like to do with ${item.partner_name}'s conversation?`,
-            [
-                {
-                    text: 'Cancel',
-                    style: 'cancel',
-                    onPress: () => console.log('Cancel pressed')
-                },
-                {
-                    text: 'Delete Forever',
-                    style: 'destructive',
-                    onPress: () => {
-                        console.log('Delete selected');
-                        confirmDeleteChat(item.chat_id, item.partner_name);
-                    },
-                },
-            ]
-        );
-    };
-
-    const confirmDeleteChat = (chatId: string, partnerName: string) => {
-        Alert.alert(
-            'Delete Conversation',
-            `Are you sure you want to permanently delete your conversation with ${partnerName}? This action cannot be undone.`,
-            [
-                {
-                    text: 'Cancel',
-                    style: 'cancel',
-                },
-                {
-                    text: 'Delete Forever',
-                    style: 'destructive',
-                    onPress: () => deleteChat(chatId),
-                },
-            ]
-        );
     };
 
     const onRefresh = (): void => {
@@ -197,10 +83,6 @@ export default function ChatListTabView({ onNavigateToFullList }: ChatListTabVie
     const getInitials = (name: string): string => {
         return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
     };
-
-    // 只显示可见的聊天，隐藏的聊天完全不显示
-    const visibleChats = chatList.filter(chat => !hiddenChats.has(chat.chat_id));
-    const hiddenChatsCount = chatList.filter(chat => hiddenChats.has(chat.chat_id)).length;
 
     const AnimatedChatItem = ({ item, index }: AnimatedChatItemProps) => {
         const fadeAnim = React.useRef(new Animated.Value(0)).current;
@@ -235,17 +117,14 @@ export default function ChatListTabView({ onNavigateToFullList }: ChatListTabVie
             >
                 <TouchableOpacity
                     style={styles.chatItem}
-                    onPress={() => {
-                        console.log('Chat pressed:', item.partner_name);
-                        navigation.navigate('ChatRoom', {
-                            chatId: item.chat_id,
-                            partner: {
-                                user_id: item.partner_id,
-                                name: item.partner_name,
-                                photo: item.partner_photo,
-                            }
-                        });
-                    }}
+                    onPress={() => navigation.navigate('ChatRoom', {
+                        chatId: item.chat_id,
+                        partner: {
+                            user_id: item.partner_id,
+                            name: item.partner_name,
+                            photo: item.partner_photo,
+                        }
+                    })}
                     activeOpacity={0.8}
                 >
                     <LinearGradient
@@ -298,39 +177,12 @@ export default function ChatListTabView({ onNavigateToFullList }: ChatListTabVie
                             </View>
 
                             <View style={styles.chevronContainer}>
-                                <TouchableOpacity
-                                    onPress={() => {
-                                        console.log('Options button pressed for:', item.partner_name);
-                                        showChatOptions(item);
-                                    }}
-                                    style={styles.optionsButton}
-                                    hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
-                                >
-                                    <Ionicons name="ellipsis-horizontal" size={20} color="#64748b" />
-                                </TouchableOpacity>
+                                <Ionicons name="chevron-forward" size={20} color="#c7d2fe" />
                             </View>
                         </View>
                     </LinearGradient>
                 </TouchableOpacity>
             </Animated.View>
-        );
-    };
-
-    const HiddenChatsIndicator = (): JSX.Element | null => {
-        if (hiddenChatsCount === 0) return null;
-
-        return (
-            <View style={styles.hiddenIndicator}>
-                <LinearGradient
-                    colors={['#f1f5f9', '#e2e8f0']}
-                    style={styles.hiddenIndicatorGradient}
-                >
-                    <Ionicons name="eye-off" size={14} color="#64748b" />
-                    <Text style={styles.hiddenIndicatorText}>
-                        {hiddenChatsCount} hidden chat{hiddenChatsCount > 1 ? 's' : ''}
-                    </Text>
-                </LinearGradient>
-            </View>
         );
     };
 
@@ -342,12 +194,9 @@ export default function ChatListTabView({ onNavigateToFullList }: ChatListTabVie
             >
                 <Ionicons name="chatbubbles" size={40} color="#ffffff" />
             </LinearGradient>
-            <Text style={styles.emptyTitle}>No Visible Conversations</Text>
+            <Text style={styles.emptyTitle}>No Conversations Yet</Text>
             <Text style={styles.emptySubtitle}>
-                {hiddenChatsCount > 0
-                    ? `You have ${hiddenChatsCount} hidden conversation${hiddenChatsCount > 1 ? 's' : ''}. Long press to manage.`
-                    : 'Start matching with people to begin your first conversation!'
-                }
+                Start matching with people to begin your first conversation!
             </Text>
         </View>
     );
@@ -357,11 +206,10 @@ export default function ChatListTabView({ onNavigateToFullList }: ChatListTabVie
             <View style={styles.headerContent}>
                 <Text style={styles.headerTitle}>Messages</Text>
                 <Text style={styles.headerSubtitle}>
-                    {visibleChats.length} conversation{visibleChats.length === 1 ? '' : 's'}
-                    {hiddenChatsCount > 0 ? ` (${hiddenChatsCount} hidden)` : ''}
+                    {chatList.length} {chatList.length === 1 ? 'conversation' : 'conversations'}
                 </Text>
             </View>
-            {(visibleChats.length > 0 || hiddenChatsCount > 0) && onNavigateToFullList && (
+            {chatList.length > 0 && onNavigateToFullList && (
                 <TouchableOpacity
                     style={styles.viewAllButton}
                     onPress={onNavigateToFullList}
@@ -387,23 +235,17 @@ export default function ChatListTabView({ onNavigateToFullList }: ChatListTabVie
         );
     }
 
-    // 合并可见和隐藏的聊天，隐藏的聊天排在后面
-    const allChats = [
-        ...visibleChats,
-        ...chatList.filter(chat => hiddenChats.has(chat.chat_id))
-    ];
-
     return (
         <View style={styles.container}>
             <FlatList<ChatItem>
-                data={allChats}
+                data={chatList}
                 keyExtractor={(item: ChatItem) => item.chat_id}
                 renderItem={renderItem}
                 ListHeaderComponent={ListHeader}
                 ListEmptyComponent={EmptyState}
                 contentContainerStyle={[
                     styles.listContainer,
-                    allChats.length === 0 && styles.emptyListContainer
+                    chatList.length === 0 && styles.emptyListContainer
                 ]}
                 showsVerticalScrollIndicator={false}
                 refreshControl={
@@ -416,7 +258,6 @@ export default function ChatListTabView({ onNavigateToFullList }: ChatListTabVie
                     />
                 }
             />
-            <HiddenChatsIndicator />
         </View>
     );
 }
@@ -473,27 +314,21 @@ const styles = StyleSheet.create({
         marginBottom: 16,
     },
     chatItem: {
-        borderRadius: 24,
+        borderRadius: 20,
         overflow: 'hidden',
         shadowColor: '#667eea',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.15,
-        shadowRadius: 20,
-        elevation: 12,
-        backgroundColor: '#ffffff',
-        marginHorizontal: 2,
-    },
-    hiddenChatItem: {
-        shadowColor: '#94a3b8',
-        shadowOpacity: 0.05,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
+        elevation: 8,
     },
     chatGradient: {
-        borderRadius: 24,
+        borderRadius: 20,
     },
     chatContent: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 24,
+        padding: 20,
     },
     avatarContainer: {
         position: 'relative',
@@ -503,45 +338,32 @@ const styles = StyleSheet.create({
         padding: 2,
     },
     avatarRing: {
-        width: 68,
-        height: 68,
-        borderRadius: 34,
+        width: 64,
+        height: 64,
+        borderRadius: 32,
         justifyContent: 'center',
         alignItems: 'center',
-        shadowColor: '#667eea',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 6,
     },
     avatarInner: {
-        width: 62,
-        height: 62,
-        borderRadius: 31,
+        width: 58,
+        height: 58,
+        borderRadius: 29,
         backgroundColor: '#ffffff',
         justifyContent: 'center',
         alignItems: 'center',
         padding: 2,
     },
     avatar: {
-        width: 58,
-        height: 58,
-        borderRadius: 29,
-    },
-    hiddenAvatar: {
-        opacity: 0.6,
+        width: 54,
+        height: 54,
+        borderRadius: 27,
     },
     avatarPlaceholder: {
-        width: 64,
-        height: 64,
-        borderRadius: 32,
+        width: 60,
+        height: 60,
+        borderRadius: 30,
         justifyContent: 'center',
         alignItems: 'center',
-        shadowColor: '#667eea',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 6,
     },
     avatarInitials: {
         color: '#ffffff',
@@ -550,41 +372,22 @@ const styles = StyleSheet.create({
     },
     onlineIndicator: {
         position: 'absolute',
-        bottom: 3,
-        right: 3,
-        width: 20,
-        height: 20,
-        borderRadius: 10,
+        bottom: 2,
+        right: 2,
+        width: 18,
+        height: 18,
+        borderRadius: 9,
         backgroundColor: '#10b981',
         borderWidth: 3,
         borderColor: '#ffffff',
         justifyContent: 'center',
         alignItems: 'center',
-        shadowColor: '#10b981',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.4,
-        shadowRadius: 4,
-        elevation: 3,
-    },
-    hiddenOnlineIndicator: {
-        backgroundColor: '#94a3b8',
     },
     onlinePulse: {
         width: 8,
         height: 8,
         borderRadius: 4,
         backgroundColor: '#ffffff',
-    },
-    hiddenBadge: {
-        position: 'absolute',
-        top: -1,
-        left: -1,
-        width: 14,
-        height: 14,
-        borderRadius: 7,
-        backgroundColor: '#64748b',
-        justifyContent: 'center',
-        alignItems: 'center',
     },
     chatTextContainer: {
         flex: 1,
@@ -596,60 +399,23 @@ const styles = StyleSheet.create({
         marginBottom: 6,
     },
     name: {
-        fontWeight: '800',
-        fontSize: 17,
+        fontWeight: '700',
+        fontSize: 16,
         color: '#1f2937',
         flex: 1,
-        letterSpacing: 0.3,
-    },
-    hiddenText: {
-        color: '#64748b',
     },
     time: {
         color: '#9ca3af',
-        fontSize: 13,
-        fontWeight: '600',
-        letterSpacing: 0.2,
-    },
-    hiddenTime: {
-        color: '#94a3b8',
+        fontSize: 12,
+        fontWeight: '500',
     },
     lastMessage: {
         color: '#6b7280',
-        fontSize: 15,
-        lineHeight: 22,
-        letterSpacing: 0.1,
+        fontSize: 14,
+        lineHeight: 20,
     },
     chevronContainer: {
         marginLeft: 12,
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    optionsButton: {
-        padding: 10,
-        borderRadius: 16,
-        backgroundColor: 'rgba(148, 163, 184, 0.08)',
-        borderWidth: 1,
-        borderColor: 'rgba(148, 163, 184, 0.12)',
-    },
-    hiddenIndicator: {
-        position: 'absolute',
-        bottom: 20,
-        right: 20,
-        borderRadius: 12,
-        overflow: 'hidden',
-    },
-    hiddenIndicatorGradient: {
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    hiddenIndicatorText: {
-        fontSize: 12,
-        fontWeight: '600',
-        color: '#64748b',
-        marginLeft: 6,
     },
     emptyContainer: {
         flex: 1,

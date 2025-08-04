@@ -22,8 +22,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { io } from 'socket.io-client';
-// 🚀 类型定义
 
+// 🚀 类型定义
 interface Partner {
     name: string;
     photo: string;
@@ -110,7 +110,6 @@ export default function InstagramChatRoom() {
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const slideAnim = useRef(new Animated.Value(height)).current;
 
-
     React.useLayoutEffect(() => {
         navigation.setOptions({
             headerShown: false,
@@ -144,7 +143,6 @@ export default function InstagramChatRoom() {
     const [showReactions, setShowReactions] = useState(false);
     const [selectedMessage, setSelectedMessage] = useState<number | null>(null);
 
-
     const {
         isDecentralizedMode,
         isInitializing,
@@ -157,14 +155,20 @@ export default function InstagramChatRoom() {
 
     const flatListRef = useRef<FlatList>(null);
 
-
-
-
+    // 分离 userId 初始化和消息加载
     useEffect(() => {
-        const init = async () => {
+        const initUserId = async () => {
             const id = await SecureStore.getItemAsync('user_id');
             setUserId(id ? parseInt(id, 10) : null);
+        };
+        initUserId();
+    }, []);
 
+    // 只有在 userId 准备好后才加载消息
+    useEffect(() => {
+        if (userId === null) return; // 等待 userId 初始化
+
+        const loadMessages = async () => {
             if (isDecentralizedMode) {
                 await loadDecentralizedMessages();
             } else {
@@ -172,8 +176,8 @@ export default function InstagramChatRoom() {
             }
         };
 
-        init();
-        const interval = setInterval(init, 5000);
+        loadMessages();
+        const interval = setInterval(loadMessages, 5000);
         return () => clearInterval(interval);
     }, [chatId, userId, isDecentralizedMode]);
 
@@ -193,9 +197,30 @@ export default function InstagramChatRoom() {
 
     const loadTraditionalMessages = async () => {
         try {
+            console.log('Fetching messages for chatId:', chatId);
+            console.log('Request URL:', `https://ccbackendx-2.onrender.com/chatroom/messages/${chatId}`);
+
             const res = await fetch(`https://ccbackendx-2.onrender.com/chatroom/messages/${chatId}`);
+
+            if (!res.ok) {
+                throw new Error(`HTTP error! status: ${res.status}`);
+            }
+
             const data = await res.json();
-            setMessages(data.messages || []);
+
+            // 添加调试日志
+            console.log('API Response:', data);
+            console.log('Messages array:', data.messages);
+
+            // 确保消息格式正确
+            const formattedMessages = (data.messages || []).map((msg: any) => ({
+                sender_id: msg.sender_id,
+                message: msg.message || msg.content, // 兼容不同字段名
+                timestamp: msg.timestamp,
+                reactions: msg.reactions || []
+            }));
+
+            setMessages(formattedMessages);
         } catch (error) {
             console.error('Error fetching traditional messages:', error);
             const testMessages: Message[] = [
@@ -219,25 +244,15 @@ export default function InstagramChatRoom() {
             setMessages(testMessages);
         }
     };
+
     const checkPartnerOnline = async () => {
         try {
             console.log("Checking online status for user:", partner.user_id);
             const res = await fetch(`https://ccbackendx-2.onrender.com/user/${partner.user_id}/online-status`);
-
-            // 检查响应类型是不是 JSON
-            const contentType = res.headers.get("content-type");
-            if (!res.ok) {
-                throw new Error(`HTTP error! status: ${res.status}`);
-            }
-            if (!contentType || !contentType.includes("application/json")) {
-                throw new Error("Unexpected response format");
-            }
-
             const data = await res.json();
             setIsPartnerOnline(data.isOnline);
         } catch (err) {
-            console.error("Failed to fetch online status:", err);
-            setIsPartnerOnline(false); // 设置为 false 避免卡住
+            console.error('Failed to fetch online status', err);
         }
     };
 
@@ -257,7 +272,6 @@ export default function InstagramChatRoom() {
             console.log('✅ Socket connected');
             socket.current.emit('register', userId);
         });
-
 
         socket.current.on('receive_message', (message: any) => {
             console.log('📥 Real-time message:', message);
@@ -318,6 +332,7 @@ export default function InstagramChatRoom() {
             setMessages(prev => prev.filter(msg => !msg._temp));
         }
     };
+
     const handleTextChange = (textValue: string) => {
         setText(textValue);
         if (socket.current && !isDecentralizedMode) {
@@ -399,6 +414,13 @@ export default function InstagramChatRoom() {
     };
 
     const renderMessage = ({ item, index }: { item: Message; index: number }) => {
+        console.log('Rendering message:', item, 'at index:', index);
+
+        if (!item || !item.message) {
+            console.warn('Invalid message item:', item);
+            return null;
+        }
+
         const isMe = item.sender_id === userId;
         const previousMessage = index > 0 ? messages[index - 1] : null;
         const showAvatar = !isMe && (!previousMessage || previousMessage.sender_id !== item.sender_id);
@@ -525,13 +547,25 @@ export default function InstagramChatRoom() {
         );
     };
 
+    // 添加调试信息
+    useEffect(() => {
+        console.log('Messages state updated:', messages);
+        console.log('Messages count:', messages.length);
+    }, [messages]);
+
+    useEffect(() => {
+        console.log('Route params:', route.params);
+        console.log('ChatId:', chatId);
+        console.log('Partner:', partner);
+    }, []);
+
     return (
         <View style={styles.container}>
-            <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+            <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
-            {/* Instagram风格渐变Header */}
+            {/* 浅色主题Header */}
             <LinearGradient
-                colors={['#667eea', '#764ba2', '#f093fb']}
+                colors={['#ffffff', '#f8fafc', '#f1f5f9']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.header}
@@ -542,7 +576,7 @@ export default function InstagramChatRoom() {
                     style={styles.backButton}
                     onPress={() => navigation.goBack()}
                 >
-                    <Ionicons name="chevron-back" size={26} color="#ffffff" />
+                    <Ionicons name="chevron-back" size={26} color="#1f2937" />
                 </TouchableOpacity>
 
                 <View style={styles.headerContent}>
@@ -559,7 +593,7 @@ export default function InstagramChatRoom() {
                             </View>
                         ) : (
                             <LinearGradient
-                                colors={['rgba(255,255,255,0.3)', 'rgba(255,255,255,0.1)']}
+                                colors={['#667eea', '#764ba2']}
                                 style={styles.headerAvatarPlaceholder}
                             >
                                 <Text style={styles.headerAvatarInitials}>{getInitials(partner.name)}</Text>
@@ -597,22 +631,22 @@ export default function InstagramChatRoom() {
                         disabled={isInitializing}
                     >
                         {isInitializing ? (
-                            <ActivityIndicator size="small" color="#ffffff" />
+                            <ActivityIndicator size="small" color="#1f2937" />
                         ) : (
                             <Ionicons
                                 name={isDecentralizedMode ? "shield-checkmark" : "planet"}
                                 size={22}
-                                color="#ffffff"
+                                color="#1f2937"
                             />
                         )}
                     </TouchableOpacity>
 
                     <TouchableOpacity style={styles.actionButton}>
-                        <Ionicons name="videocam" size={22} color="#ffffff" />
+                        <Ionicons name="videocam" size={22} color="#1f2937" />
                     </TouchableOpacity>
 
                     <TouchableOpacity style={styles.actionButton}>
-                        <Ionicons name="call" size={20} color="#ffffff" />
+                        <Ionicons name="call" size={20} color="#1f2937" />
                     </TouchableOpacity>
                 </View>
             </LinearGradient>
@@ -631,11 +665,17 @@ export default function InstagramChatRoom() {
                         keyExtractor={(_, index) => index.toString()}
                         contentContainerStyle={styles.messagesList}
                         showsVerticalScrollIndicator={false}
-                        onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+                        onContentSizeChange={() => {
+                            console.log('FlatList content size changed, messages count:', messages.length);
+                            flatListRef.current?.scrollToEnd({ animated: true });
+                        }}
+                        removeClippedSubviews={false}
+                        initialNumToRender={10}
+                        maxToRenderPerBatch={10}
                     />
                 </Animated.View>
 
-                {/* Instagram风格输入区域 */}
+                {/* 浅色主题输入区域 */}
                 <BlurView intensity={95} tint="light" style={styles.inputContainer}>
                     <View style={styles.inputWrapper}>
                         <TouchableOpacity style={styles.cameraButton}>
@@ -651,7 +691,7 @@ export default function InstagramChatRoom() {
                             <TextInput
                                 style={styles.input}
                                 placeholder="Message..."
-                                placeholderTextColor="rgba(60, 60, 67, 0.6)"
+                                placeholderTextColor="rgba(107, 114, 128, 0.6)"
                                 value={text}
                                 onChangeText={handleTextChange}
                                 multiline
@@ -690,7 +730,7 @@ export default function InstagramChatRoom() {
                         setSelectedMessage(null);
                     }}
                 >
-                    <BlurView intensity={20} tint="dark" style={styles.reactionPickerContainer}>
+                    <BlurView intensity={20} tint="light" style={styles.reactionPickerContainer}>
                         <View style={styles.reactionPicker}>
                             {['❤️', '😂', '😮', '😢', '😡', '👍'].map((emoji, index) => (
                                 <TouchableOpacity
@@ -712,7 +752,7 @@ export default function InstagramChatRoom() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#ffffff',
+        backgroundColor: '#f8fafc',
     },
     header: {
         flexDirection: 'row',
@@ -721,19 +761,18 @@ const styles = StyleSheet.create({
         paddingTop: StatusBar.currentHeight ? StatusBar.currentHeight + 10 : 50,
         paddingBottom: 16,
         elevation: 8,
-        shadowColor: '#667eea',
+        shadowColor: '#1f2937',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
+        shadowOpacity: 0.1,
         shadowRadius: 8,
     },
     backButton: {
         width: 44,
         height: 44,
         borderRadius: 22,
-        backgroundColor: 'rgba(255,255,255,0.2)',
+        backgroundColor: 'rgba(31, 41, 55, 0.1)',
         justifyContent: 'center',
         alignItems: 'center',
-
     },
     headerContent: {
         flex: 1,
@@ -751,7 +790,7 @@ const styles = StyleSheet.create({
         height: 44,
         borderRadius: 22,
         borderWidth: 3,
-        borderColor: 'rgba(255,255,255,0.4)',
+        borderColor: 'rgba(31, 41, 55, 0.1)',
     },
     headerStoryRing: {
         position: 'absolute',
@@ -783,7 +822,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 2,
-        borderColor: 'rgba(255,255,255,0.3)',
+        borderColor: 'rgba(31, 41, 55, 0.1)',
     },
     headerAvatarInitials: {
         color: '#ffffff',
@@ -799,10 +838,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     partnerName: {
-        color: '#ffffff',
+        color: '#1f2937',
         fontSize: 18,
         fontWeight: 'bold',
-        textShadowColor: 'rgba(0,0,0,0.2)',
+        textShadowColor: 'rgba(255,255,255,0.8)',
         textShadowOffset: { width: 0, height: 1 },
         textShadowRadius: 2,
     },
@@ -828,7 +867,7 @@ const styles = StyleSheet.create({
         shadowRadius: 3,
     },
     offlineStatus: {
-        backgroundColor: 'rgba(255,255,255,0.6)',
+        backgroundColor: 'rgba(107, 114, 128, 0.6)',
     },
     decentralizedStatus: {
         backgroundColor: '#3b82f6',
@@ -838,7 +877,7 @@ const styles = StyleSheet.create({
         shadowRadius: 3,
     },
     statusText: {
-        color: 'rgba(255,255,255,0.9)',
+        color: 'rgba(31, 41, 55, 0.7)',
         fontSize: 13,
         fontWeight: '500',
     },
@@ -851,29 +890,31 @@ const styles = StyleSheet.create({
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: 'rgba(255,255,255,0.2)',
+        backgroundColor: 'rgba(31, 41, 55, 0.1)',
         justifyContent: 'center',
         alignItems: 'center',
-
     },
     activeActionButton: {
-        backgroundColor: 'rgba(16, 185, 129, 0.9)',
+        backgroundColor: 'rgba(16, 185, 129, 0.2)',
         shadowColor: '#10b981',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.5,
+        shadowOpacity: 0.3,
         shadowRadius: 4,
     },
     chatContainer: {
         flex: 1,
+        backgroundColor: '#f8fafc',
     },
     messagesContainer: {
         flex: 1,
+        backgroundColor: '#f8fafc',
     },
     messagesList: {
         paddingHorizontal: 16,
         paddingTop: 20,
         paddingBottom: 20,
         flexGrow: 1,
+        backgroundColor: '#f8fafc',
     },
     messageWrapper: {
         marginBottom: 12,
@@ -959,10 +1000,10 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.3,
     },
     theirMessage: {
-        backgroundColor: '#f1f3f5',
+        backgroundColor: '#ffffff',
         borderBottomLeftRadius: 6,
         borderWidth: 1,
-        borderColor: 'rgba(0,0,0,0.05)',
+        borderColor: 'rgba(31, 41, 55, 0.1)',
     },
     decentralizedMessage: {
         borderWidth: 2,
@@ -981,7 +1022,7 @@ const styles = StyleSheet.create({
         color: '#ffffff',
     },
     theirMessageText: {
-        color: '#1a1a1a',
+        color: '#1f2937',
     },
     decentralizedIndicator: {
         position: 'absolute',
@@ -1011,7 +1052,7 @@ const styles = StyleSheet.create({
         marginRight: 6,
         marginBottom: 4,
         borderWidth: 1,
-        borderColor: 'rgba(0,0,0,0.1)',
+        borderColor: 'rgba(31, 41, 55, 0.1)',
     },
     reactionEmoji: {
         fontSize: 14,
@@ -1019,12 +1060,12 @@ const styles = StyleSheet.create({
     },
     reactionCount: {
         fontSize: 12,
-        color: '#666',
+        color: '#6b7280',
         fontWeight: '600',
     },
     timestamp: {
         fontSize: 11,
-        color: '#999',
+        color: '#6b7280',
         marginTop: 4,
         fontWeight: '500',
     },
@@ -1043,7 +1084,7 @@ const styles = StyleSheet.create({
     inputContainer: {
         backgroundColor: 'rgba(255,255,255,0.95)',
         borderTopWidth: 1,
-        borderTopColor: 'rgba(0,0,0,0.1)',
+        borderTopColor: 'rgba(31, 41, 55, 0.1)',
         paddingHorizontal: 16,
         paddingVertical: 12,
         paddingBottom: Platform.OS === 'ios' ? 34 : 12,
@@ -1067,10 +1108,10 @@ const styles = StyleSheet.create({
         flex: 1,
         flexDirection: 'row',
         alignItems: 'flex-end',
-        backgroundColor: '#f8f9fa',
+        backgroundColor: '#f1f5f9',
         borderRadius: 20,
         borderWidth: 1,
-        borderColor: 'rgba(0,0,0,0.1)',
+        borderColor: 'rgba(31, 41, 55, 0.1)',
         paddingHorizontal: 4,
         paddingVertical: 4,
         minHeight: 40,
@@ -1081,7 +1122,7 @@ const styles = StyleSheet.create({
         paddingVertical: 8,
         paddingHorizontal: 12,
         fontSize: 16,
-        color: '#1a1a1a',
+        color: '#1f2937',
         lineHeight: 20,
         maxHeight: 80,
     },
@@ -1109,11 +1150,11 @@ const styles = StyleSheet.create({
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: '#f8f9fa',
+        backgroundColor: '#f1f5f9',
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: 'rgba(0,0,0,0.1)',
+        borderColor: 'rgba(31, 41, 55, 0.1)',
     },
     reactionOverlay: {
         position: 'absolute',
@@ -1121,31 +1162,32 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(0,0,0,0.4)',
+        backgroundColor: 'rgba(31, 41, 55, 0.4)',
         justifyContent: 'center',
         alignItems: 'center',
     },
     reactionPickerContainer: {
         borderRadius: 25,
         overflow: 'hidden',
-        backgroundColor: 'rgba(255,255,255,0.9)',
+        backgroundColor: 'rgba(255,255,255,0.95)',
     },
     reactionPicker: {
         flexDirection: 'row',
         paddingHorizontal: 20,
         paddingVertical: 16,
         gap: 16,
+        backgroundColor: '#ffffff',
     },
     reactionOption: {
         width: 44,
         height: 44,
         borderRadius: 22,
-        backgroundColor: 'rgba(255,255,255,0.8)',
+        backgroundColor: '#f8fafc',
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: 'rgba(0,0,0,0.1)',
-        shadowColor: '#000',
+        borderColor: 'rgba(31, 41, 55, 0.1)',
+        shadowColor: '#1f2937',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,

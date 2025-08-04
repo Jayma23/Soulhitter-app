@@ -1,84 +1,313 @@
 "use client"
 
-import React, { useState, useRef } from "react"
-import {
-    View,
-    Text,
-    ScrollView,
-    TouchableOpacity,
-    TextInput,
-    Image,
-    Alert,
-    StyleSheet,
-    Dimensions,
-    SafeAreaView,
-    Animated,
-    Platform,
-} from "react-native"
-import * as SecureStore from "expo-secure-store";
-import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
+import * as SecureStore from "expo-secure-store";
+import React, { useRef, useState } from "react";
+import {
+    ActivityIndicator,
+    Alert,
+    Animated,
+    Dimensions,
+    Easing,
+    Image,
+    Platform,
+    SafeAreaView,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    Vibration,
+    View,
+} from "react-native";
 
 const { width, height } = Dimensions.get("window")
 
 const cards = [
-    { id: 1, name: "Adventure", image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745482/d5af474050c2ff7773f174745759d874_wgezje.jpg" },
-    { id: 2, name: "Romance", image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745482/f80878eec037881744073d55f1479947_chr4zt.jpg" },
-    { id: 3, name: "Mystery", image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745481/cf1ad304328fb5d9e6986bade94418fc_ygqcxa.jpg" },
-    { id: 4, name: "Classic", image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745481/99_tuuquh.png" },
-    { id: 5, name: "Nature", image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745481/2_btcngo.jpg" },
-    { id: 6, name: "Urban", image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745481/5_w4c8i6.jpg" },
-    { id: 7, name: "Elegant", image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745481/1_htkc6n.jpg" },
-    { id: 8, name: "Creative", image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745481/4_mcmdcv.jpg" },
-    { id: 9, name: "Artistic", image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745481/4_mcmdcv.jpg" },
-    { id: 10, name: "Modern", image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745481/4_mcmdcv.jpg" },
-    { id: 11, name: "Vintage", image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745481/4_mcmdcv.jpg" },
-    { id: 12, name: "Bold", image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745481/4_mcmdcv.jpg" },
+    { id: 1, name: "Adventure", image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745482/d5af474050c2ff7773f174745759d874_wgezje.jpg", description: "Seeking thrill and excitement" },
+    { id: 2, name: "Romance", image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745482/f80878eec037881744073d55f1479947_chr4zt.jpg", description: "Love and deep connections" },
+    { id: 3, name: "Mystery", image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745481/cf1ad304328fb5d9e6986bade94418fc_ygqcxa.jpg", description: "Intrigue and discovery" },
+    { id: 4, name: "Classic", image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745481/99_tuuquh.png", description: "Timeless and traditional" },
+    { id: 5, name: "Nature", image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745481/2_btcngo.jpg", description: "Organic and natural vibes" },
+    { id: 6, name: "Urban", image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745481/5_w4c8i6.jpg", description: "City life and energy" },
+    { id: 7, name: "Elegant", image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745481/1_htkc6n.jpg", description: "Sophisticated and refined" },
+    { id: 8, name: "Creative", image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745481/4_mcmdcv.jpg", description: "Artistic and imaginative" },
+    { id: 9, name: "Artistic", image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745481/4_mcmdcv.jpg", description: "Expressive and creative" },
+    { id: 10, name: "Modern", image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745481/4_mcmdcv.jpg", description: "Contemporary and fresh" },
+    { id: 11, name: "Vintage", image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745481/4_mcmdcv.jpg", description: "Retro and nostalgic" },
+    { id: 12, name: "Bold", image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745481/4_mcmdcv.jpg", description: "Confident and daring" },
 ]
+
+// Processing states for better UX
+const PROCESSING_STATES = {
+    IDLE: 'idle',
+    SAVING_PREFERENCES: 'saving_preferences',
+    PROCESSING_EMBEDDING: 'processing_embedding',
+    FINDING_MATCHES: 'finding_matches',
+    COMPLETED: 'completed'
+}
+
+const PROCESSING_MESSAGES = {
+    [PROCESSING_STATES.SAVING_PREFERENCES]: "💾 Saving your preferences...",
+    [PROCESSING_STATES.PROCESSING_EMBEDDING]: "🧠 Analyzing your personality with AI...",
+    [PROCESSING_STATES.FINDING_MATCHES]: "💕 Finding your perfect matches...",
+    [PROCESSING_STATES.COMPLETED]: "✨ All done! Ready to find love!"
+}
 
 export default function App() {
     const [range, setRange] = useState("")
     const [selectedCard, setSelectedCard] = useState<string | null>(null)
-    const [isSubmitting, setIsSubmitting] = useState(false)
+    const [processingState, setProcessingState] = useState(PROCESSING_STATES.IDLE)
+    const [matchResults, setMatchResults] = useState(null)
+    const [progressValue, setProgressValue] = useState(0)
+    const [showCardDetails, setShowCardDetails] = useState<number | null>(null)
+
+    // Enhanced animations
     const scaleAnim = useRef(new Animated.Value(1)).current
     const fadeAnim = useRef(new Animated.Value(0)).current
     const slideAnim = useRef(new Animated.Value(50)).current
+    const progressAnim = useRef(new Animated.Value(0)).current
+    const pulseAnim = useRef(new Animated.Value(1)).current
+    const cardScaleAnim = useRef(new Animated.Value(1)).current
+    const cardRotateAnim = useRef(new Animated.Value(0)).current
+    const shimmerAnim = useRef(new Animated.Value(0)).current
+    const inputFocusAnim = useRef(new Animated.Value(0)).current
 
     React.useEffect(() => {
+        // Enhanced entrance animations
         Animated.parallel([
             Animated.timing(fadeAnim, {
                 toValue: 1,
-                duration: 1000,
+                duration: 1200,
+                easing: Easing.out(Easing.cubic),
                 useNativeDriver: true,
             }),
             Animated.timing(slideAnim, {
                 toValue: 0,
-                duration: 800,
+                duration: 1000,
+                easing: Easing.out(Easing.back(1.2)),
                 useNativeDriver: true,
             })
         ]).start()
-    }, [])
 
-    const handleCardPress = (cardImage: string) => {
+        // Shimmer animation for selected cards
+        if (selectedCard) {
+            const shimmerLoop = Animated.loop(
+                Animated.timing(shimmerAnim, {
+                    toValue: 1,
+                    duration: 2000,
+                    useNativeDriver: false,
+                })
+            )
+            shimmerLoop.start()
+            return () => shimmerLoop.stop()
+        }
+
+        // Pulse animation for processing state
+        if (processingState !== PROCESSING_STATES.IDLE) {
+            const pulseAnimation = Animated.loop(
+                Animated.sequence([
+                    Animated.timing(pulseAnim, {
+                        toValue: 1.1,
+                        duration: 800,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(pulseAnim, {
+                        toValue: 1,
+                        duration: 800,
+                        useNativeDriver: true,
+                    })
+                ])
+            )
+            pulseAnimation.start()
+            return () => pulseAnimation.stop()
+        }
+    }, [processingState, selectedCard])
+
+    const animateProgress = (toValue: number) => {
+        Animated.timing(progressAnim, {
+            toValue,
+            duration: 1000,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: false,
+        }).start(() => {
+            setProgressValue(toValue)
+        })
+    }
+
+    const handleCardPress = (cardImage: string, cardId: number) => {
+        if (processingState !== PROCESSING_STATES.IDLE) return
+
+        // Haptic feedback
+        if (Platform.OS === 'ios') {
+            Vibration.vibrate(1)
+        }
+
         setSelectedCard(cardImage)
 
-        // Animate selection
+        // Enhanced card selection animation
         Animated.sequence([
-            Animated.timing(scaleAnim, {
+            Animated.timing(cardScaleAnim, {
                 toValue: 0.95,
                 duration: 100,
                 useNativeDriver: true,
             }),
-            Animated.timing(scaleAnim, {
+            Animated.timing(cardScaleAnim, {
+                toValue: 1.05,
+                duration: 150,
+                useNativeDriver: true,
+            }),
+            Animated.timing(cardScaleAnim, {
                 toValue: 1,
                 duration: 100,
+                useNativeDriver: true,
+            })
+        ]).start()
+
+        // Card rotation effect
+        Animated.sequence([
+            Animated.timing(cardRotateAnim, {
+                toValue: 1,
+                duration: 200,
+                useNativeDriver: true,
+            }),
+            Animated.timing(cardRotateAnim, {
+                toValue: 0,
+                duration: 200,
                 useNativeDriver: true,
             })
         ]).start()
     }
 
+    const handleCardLongPress = (cardId: number) => {
+        if (Platform.OS === 'ios') {
+            Vibration.vibrate(2)
+        }
+        setShowCardDetails(showCardDetails === cardId ? null : cardId)
+    }
+
+    const handleInputFocus = () => {
+        Animated.timing(inputFocusAnim, {
+            toValue: 1,
+            duration: 200,
+            useNativeDriver: false,
+        }).start()
+    }
+
+    const handleInputBlur = () => {
+        Animated.timing(inputFocusAnim, {
+            toValue: 0,
+            duration: 200,
+            useNativeDriver: false,
+        }).start()
+    }
+
+    const processUserEmbedding = async (userId: string) => {
+        try {
+            setProcessingState(PROCESSING_STATES.PROCESSING_EMBEDDING)
+            animateProgress(50)
+
+            const response = await fetch('https://ccbackendx-2.onrender.com/personality/process-user-embedding', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ user_id: userId }),
+            })
+
+            if (!response.ok) {
+                throw new Error('Failed to process embedding')
+            }
+
+            const result = await response.json()
+            console.log('Embedding processed:', result)
+            return result
+        } catch (error) {
+            console.error('Error processing embedding:', error)
+            throw error
+        }
+    }
+
+    const findBestMatches = async (userId: string) => {
+        try {
+            setProcessingState(PROCESSING_STATES.FINDING_MATCHES)
+            animateProgress(80)
+
+            const response = await fetch(`https://ccbackendx-2.onrender.com/match/best-matches/${userId}?limit=5`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            })
+
+            if (!response.ok) {
+                throw new Error('Failed to find matches')
+            }
+
+            const result = await response.json()
+            console.log('Matches found:', result)
+            return result
+        } catch (error) {
+            console.error('Error finding matches:', error)
+            throw error
+        }
+    }
+
+    const showMatchResults = (matches: any) => {
+        if (!matches || !matches.matches || matches.matches.length === 0) {
+            Alert.alert(
+                "Building Your Profile 🏗️",
+                "Your profile is now ready! We're building our user base and will notify you when amazing matches become available. Stay tuned! 💕",
+                [{ text: "Sounds Great! 🌟", style: "default" }]
+            )
+            return
+        }
+
+        const topMatch = matches.matches[0]
+        const matchScore = topMatch.match_score?.overall || 0
+        const matchUser = topMatch.user
+
+        let matchEmoji = "💫"
+        let matchLevel = "Good"
+
+        if (matchScore >= 90) {
+            matchEmoji = "💖"
+            matchLevel = "Perfect"
+        } else if (matchScore >= 80) {
+            matchEmoji = "✨"
+            matchLevel = "Excellent"
+        } else if (matchScore >= 70) {
+            matchEmoji = "💕"
+            matchLevel = "Great"
+        }
+
+        Alert.alert(
+            `${matchEmoji} ${matchLevel} Match Found!`,
+            `We found ${matches.matches.length} potential matches!\n\n` +
+            `🌟 Top Match: ${matchUser?.name || 'Someone Special'}\n` +
+            `📊 Compatibility: ${matchScore}%\n` +
+            `🎯 Age: ${matchUser?.age || 'N/A'}\n\n` +
+            `Your journey to find love has begun! 💕`,
+            [
+                {
+                    text: "Amazing! 🚀",
+                    onPress: () => {
+                        setMatchResults(matches)
+                    }
+                }
+            ]
+        )
+    }
+
     const handleSubmit = async () => {
         if (!range || selectedCard === null) {
+            // Enhanced validation feedback
+            if (Platform.OS === 'ios') {
+                Vibration.vibrate(3)
+            }
+            
             Alert.alert("Oops! 💭", "Please fill in all required fields to continue your journey", [
                 { text: "Got it! ✨", style: "default" }
             ])
@@ -87,63 +316,103 @@ export default function App() {
 
         const rangeNum = Number.parseInt(range)
         if (isNaN(rangeNum) || rangeNum < 100 || rangeNum > 100000) {
+            if (Platform.OS === 'ios') {
+                Vibration.vibrate(3)
+            }
+            
             Alert.alert("Invalid Range 📍", "Please enter a valid geographic range (100-100000 meters)", [
                 { text: "Try Again 🔄", style: "default" }
             ])
             return
         }
 
-        setIsSubmitting(true)
-
         try {
-            await new Promise((resolve) => setTimeout(resolve, 1500))
-            const userId = await SecureStore.getItemAsync('user_id');
+            const userId = await SecureStore.getItemAsync('user_id')
+            if (!userId) {
+                Alert.alert("Error", "User ID not found. Please log in again.")
+                return
+            }
 
-            const data = {
+            // Step 1: Save preferences
+            setProcessingState(PROCESSING_STATES.SAVING_PREFERENCES)
+            animateProgress(20)
+
+            const preferenceData = {
                 user_id: userId,
                 distance: rangeNum,
                 photo_urls: selectedCard,
             }
 
-            console.log("Submitted data:", data)
-
-            const response = await fetch('https://ccbackendx-2.onrender.com/personality/preference', {
+            const preferenceResponse = await fetch('https://ccbackendx-2.onrender.com/personality/preference', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(data),
+                body: JSON.stringify(preferenceData),
             })
 
-            Alert.alert("Success! 🎉", "Your preferences have been saved successfully! Let the magic begin ✨", [
-                {
-                    text: "Amazing! 💖",
-                    onPress: () => {
-                        setRange("")
-                        setSelectedCard(null)
-                    },
-                },
-            ])
+            if (!preferenceResponse.ok) {
+                throw new Error('Failed to save preferences')
+            }
+
+            // Step 2: Process user embedding
+            await processUserEmbedding(userId)
+
+            // Step 3: Find matches
+            const matches = await findBestMatches(userId)
+
+            // Step 4: Complete
+            setProcessingState(PROCESSING_STATES.COMPLETED)
+            animateProgress(100)
+
+            // Show results after a brief delay
+            setTimeout(() => {
+                showMatchResults(matches)
+
+                // Reset state after showing results
+                setTimeout(() => {
+                    setProcessingState(PROCESSING_STATES.IDLE)
+                    setProgressValue(0)
+                    progressAnim.setValue(0)
+                    setRange("")
+                    setSelectedCard(null)
+                }, 2000)
+            }, 1000)
+
         } catch (error) {
-            Alert.alert("Connection Issue 🔌", "Submission failed, please try again in a moment", [
-                { text: "Retry 🚀", style: "default" }
-            ])
-        } finally {
-            setIsSubmitting(false)
+            console.error('Error in processing:', error)
+            setProcessingState(PROCESSING_STATES.IDLE)
+            setProgressValue(0)
+            progressAnim.setValue(0)
+
+            Alert.alert(
+                "Connection Issue 🔌",
+                "Something went wrong during processing. Please check your connection and try again.",
+                [{ text: "Retry 🚀", style: "default" }]
+            )
         }
     }
 
     const renderCard = (card: (typeof cards)[0], index: number) => {
         const isSelected = selectedCard === card.image
+        const isDetailed = showCardDetails === card.id
         const cardWidth = (width - 60) / 2
-
         const cardDelay = index * 100
+        const isDisabled = processingState !== PROCESSING_STATES.IDLE
+
+        const shimmerTranslateX = shimmerAnim.interpolate({
+            inputRange: [0, 1],
+            outputRange: ['-100%', '100%'],
+        })
 
         return (
             <Animated.View
                 key={card.id}
                 style={{
-                    opacity: fadeAnim,
+                    opacity: fadeAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0, isDisabled ? 0.5 : 1],
+                    }),
                     transform: [
                         {
                             translateY: slideAnim.interpolate({
@@ -151,7 +420,9 @@ export default function App() {
                                 outputRange: [0, cardDelay / 10],
                             })
                         },
-                        { scale: isSelected ? scaleAnim : 1 }
+                        { 
+                            scale: isSelected ? Animated.multiply(cardScaleAnim, scaleAnim) : 1
+                        }
                     ]
                 }}
             >
@@ -159,48 +430,83 @@ export default function App() {
                     style={[
                         styles.cardContainer,
                         { width: cardWidth },
-                        isSelected && styles.selectedCard
+                        isSelected && styles.selectedCard,
+                        isDisabled && styles.disabledCard,
+                        isDetailed && styles.detailedCard
                     ]}
-                    onPress={() => handleCardPress(card.image)}
+                    onPress={() => handleCardPress(card.image, card.id)}
+                    onLongPress={() => handleCardLongPress(card.id)}
+                    disabled={isDisabled}
                     activeOpacity={0.8}
                 >
                     <Image source={{ uri: card.image }} style={styles.cardImage} />
 
-                    {/* Gradient Overlay */}
+                    {/* Enhanced Gradient Overlay */}
                     <LinearGradient
-                        colors={['transparent', 'rgba(0,0,0,0.8)']}
+                        colors={['transparent', 'rgba(0,0,0,0.9)']}
                         style={styles.cardGradient}
                     >
                         <Text style={styles.cardName}>{card.name}</Text>
+                        {isDetailed && (
+                            <Text style={styles.cardDescription}>{card.description}</Text>
+                        )}
                     </LinearGradient>
 
-                    {/* Selection Indicator with Animation */}
+                    {/* Enhanced Selection Indicator */}
                     {isSelected && (
                         <Animated.View style={[styles.selectedIndicator, { transform: [{ scale: scaleAnim }] }]}>
                             <LinearGradient
                                 colors={['#ff6b9d', '#c44569']}
                                 style={styles.selectedGradient}
                             >
-                                <Text style={styles.selectedText}>✨</Text>
+                                <Ionicons name="checkmark" size={20} color="#ffffff" />
                             </LinearGradient>
                         </Animated.View>
                     )}
 
-                    {/* Shimmer Effect for Selected Card */}
+                    {/* Enhanced Shimmer Effect */}
                     {isSelected && (
                         <View style={styles.shimmerContainer}>
-                            <LinearGradient
-                                colors={['transparent', 'rgba(255,255,255,0.4)', 'transparent']}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 0 }}
-                                style={styles.shimmer}
-                            />
+                            <Animated.View
+                                style={[
+                                    styles.shimmer,
+                                    {
+                                        transform: [{ translateX: shimmerTranslateX }]
+                                    }
+                                ]}
+                            >
+                                <LinearGradient
+                                    colors={['transparent', 'rgba(255,255,255,0.6)', 'transparent']}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 0 }}
+                                    style={styles.shimmerGradient}
+                                />
+                            </Animated.View>
                         </View>
+                    )}
+
+                    {/* Card Details Overlay */}
+                    {isDetailed && (
+                        <Animated.View style={[styles.cardDetailsOverlay, { opacity: fadeAnim }]}>
+                            <LinearGradient
+                                colors={['rgba(0,0,0,0.8)', 'rgba(0,0,0,0.9)']}
+                                style={styles.cardDetailsGradient}
+                            >
+                                <Text style={styles.cardDetailsTitle}>{card.name}</Text>
+                                <Text style={styles.cardDetailsDescription}>{card.description}</Text>
+                                <View style={styles.cardDetailsIcon}>
+                                    <Ionicons name="information-circle" size={24} color="#ffffff" />
+                                </View>
+                            </LinearGradient>
+                        </Animated.View>
                     )}
                 </TouchableOpacity>
             </Animated.View>
         )
     }
+
+    const isProcessing = processingState !== PROCESSING_STATES.IDLE
+    const isFormDisabled = !range || selectedCard === null || isProcessing
 
     return (
         <SafeAreaView style={styles.container}>
@@ -211,28 +517,103 @@ export default function App() {
             />
 
             <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-                {/* Animated Header with Blur Effect */}
+                {/* Enhanced Animated Header */}
                 <Animated.View style={[styles.headerContainer, { opacity: fadeAnim }]}>
                     <BlurView intensity={20} style={styles.headerBlur}>
                         <LinearGradient
                             colors={['rgba(255,255,255,0.95)', 'rgba(255,255,255,0.85)']}
                             style={styles.headerGradient}
                         >
-                            <Text style={styles.title}>💕 Find Your Perfect Match</Text>
+                            <Animated.Text style={[
+                                styles.title,
+                                isProcessing && { transform: [{ scale: pulseAnim }] }
+                            ]}>
+                                {isProcessing ? "🔮 Creating Magic" : "💕 Find Your Perfect Match"}
+                            </Animated.Text>
                             <Text style={styles.subtitle}>
-                                Set your preferences and let destiny do the rest ✨
+                                {isProcessing
+                                    ? "AI is working hard to find your soulmate ✨"
+                                    : "Set your preferences and let destiny do the rest ✨"
+                                }
                             </Text>
                             <View style={styles.decorativeLine} />
                         </LinearGradient>
                     </BlurView>
                 </Animated.View>
 
-                {/* Geographic Range Section */}
+                {/* Enhanced Processing Progress Bar */}
+                {isProcessing && (
+                    <Animated.View style={[styles.progressContainer, { opacity: fadeAnim }]}>
+                        <LinearGradient
+                            colors={['rgba(255,255,255,0.95)', 'rgba(255,255,255,0.9)']}
+                            style={styles.progressGradient}
+                        >
+                            <Text style={styles.progressTitle}>
+                                {PROCESSING_MESSAGES[processingState]}
+                            </Text>
+
+                            <View style={styles.progressBarContainer}>
+                                <View style={styles.progressBarBackground}>
+                                    <Animated.View
+                                        style={[
+                                            styles.progressBarFill,
+                                            {
+                                                width: progressAnim.interpolate({
+                                                    inputRange: [0, 100],
+                                                    outputRange: ['0%', '100%'],
+                                                })
+                                            }
+                                        ]}
+                                    >
+                                        <LinearGradient
+                                            colors={['#ff6b9d', '#c44569', '#8b5a9f']}
+                                            style={styles.progressGradientFill}
+                                            start={{ x: 0, y: 0 }}
+                                            end={{ x: 1, y: 0 }}
+                                        />
+                                    </Animated.View>
+                                </View>
+                            </View>
+
+                            <Text style={styles.progressPercentage}>
+                                {Math.round(progressValue)}% Complete
+                            </Text>
+
+                            <View style={styles.loadingDotsContainer}>
+                                {[0, 1, 2].map((index) => (
+                                    <Animated.View
+                                        key={index}
+                                        style={[
+                                            styles.loadingDot,
+                                            {
+                                                opacity: pulseAnim.interpolate({
+                                                    inputRange: [1, 1.1],
+                                                    outputRange: [0.3, 1],
+                                                }),
+                                                transform: [{
+                                                    scale: pulseAnim.interpolate({
+                                                        inputRange: [1, 1.1],
+                                                        outputRange: [0.8, 1.2],
+                                                    })
+                                                }]
+                                            }
+                                        ]}
+                                    />
+                                ))}
+                            </View>
+                        </LinearGradient>
+                    </Animated.View>
+                )}
+
+                {/* Enhanced Geographic Range Section */}
                 <Animated.View
                     style={[
                         styles.section,
                         {
-                            opacity: fadeAnim,
+                            opacity: fadeAnim.interpolate({
+                                inputRange: [0, 1],
+                                outputRange: [0, isProcessing ? 0.6 : 1],
+                            }),
                             transform: [{ translateY: slideAnim }]
                         }
                     ]}
@@ -253,20 +634,37 @@ export default function App() {
 
                         <View style={styles.inputContainer}>
                             <Text style={styles.inputLabel}>Distance in Meters</Text>
-                            <View style={styles.inputWrapper}>
+                            <Animated.View style={[
+                                styles.inputWrapper,
+                                {
+                                    transform: [{
+                                        scale: inputFocusAnim.interpolate({
+                                            inputRange: [0, 1],
+                                            outputRange: [1, 1.02]
+                                        })
+                                    }]
+                                }
+                            ]}>
                                 <TextInput
-                                    style={[styles.textInput, range && styles.textInputFilled]}
+                                    style={[
+                                        styles.textInput,
+                                        range && styles.textInputFilled,
+                                        isProcessing && styles.textInputDisabled
+                                    ]}
                                     placeholder="e.g., 5000"
                                     placeholderTextColor="#94a3b8"
                                     value={range}
                                     onChangeText={setRange}
                                     keyboardType="numeric"
                                     maxLength={6}
+                                    editable={!isProcessing}
+                                    onFocus={handleInputFocus}
+                                    onBlur={handleInputBlur}
                                 />
                                 <View style={styles.inputIcon}>
-                                    <Text style={styles.inputIconText}>📏</Text>
+                                    <Ionicons name="location" size={20} color="#ff6b9d" />
                                 </View>
-                            </View>
+                            </Animated.View>
                             <Text style={styles.inputHint}>
                                 💡 Sweet spot: 1000-50000 meters (1-50 km)
                             </Text>
@@ -274,12 +672,15 @@ export default function App() {
                     </LinearGradient>
                 </Animated.View>
 
-                {/* Card Selection Section */}
+                {/* Enhanced Card Selection Section */}
                 <Animated.View
                     style={[
                         styles.section,
                         {
-                            opacity: fadeAnim,
+                            opacity: fadeAnim.interpolate({
+                                inputRange: [0, 1],
+                                outputRange: [0, isProcessing ? 0.6 : 1],
+                            }),
                             transform: [{ translateY: slideAnim }]
                         }
                     ]}
@@ -296,6 +697,9 @@ export default function App() {
                             <Text style={styles.sectionDescription}>
                                 Choose the card that resonates with your soul
                             </Text>
+                            <Text style={styles.sectionHint}>
+                                💡 Long press any card for more details
+                            </Text>
                         </View>
 
                         <View style={styles.cardsGrid}>
@@ -304,7 +708,7 @@ export default function App() {
                     </LinearGradient>
                 </Animated.View>
 
-                {/* Submit Button with Enhanced Design */}
+                {/* Enhanced Submit Button */}
                 <Animated.View
                     style={[
                         styles.submitContainer,
@@ -317,27 +721,36 @@ export default function App() {
                     <TouchableOpacity
                         style={[
                             styles.submitButton,
-                            (!range || selectedCard === null || isSubmitting) && styles.submitButtonDisabled,
+                            isFormDisabled && styles.submitButtonDisabled,
                         ]}
                         onPress={handleSubmit}
-                        disabled={!range || selectedCard === null || isSubmitting}
+                        disabled={isFormDisabled}
                         activeOpacity={0.8}
                     >
                         <LinearGradient
                             colors={
-                                (!range || selectedCard === null || isSubmitting)
+                                isFormDisabled
                                     ? ['#94a3b8', '#64748b']
                                     : ['#ff6b9d', '#c44569', '#8b5a9f']
                             }
                             style={styles.submitGradient}
                         >
-                            <Text style={styles.submitButtonText}>
-                                {isSubmitting ? "✨ Working Magic..." : "🚀 Save Preferences"}
-                            </Text>
-                            {!isSubmitting && (
-                                <View style={styles.submitIcon}>
-                                    <Text style={styles.submitIconText}>💖</Text>
+                            {isProcessing ? (
+                                <View style={styles.submitProcessing}>
+                                    <ActivityIndicator color="#ffffff" size="small" />
+                                    <Text style={[styles.submitButtonText, { marginLeft: 10 }]}>
+                                        {PROCESSING_MESSAGES[processingState]}
+                                    </Text>
                                 </View>
+                            ) : (
+                                <>
+                                    <Text style={styles.submitButtonText}>
+                                        🚀 Find My Soulmate
+                                    </Text>
+                                    <View style={styles.submitIcon}>
+                                        <Ionicons name="heart" size={24} color="#ffffff" />
+                                    </View>
+                                </>
                             )}
                         </LinearGradient>
                     </TouchableOpacity>
@@ -397,6 +810,67 @@ const styles = StyleSheet.create({
         borderRadius: 2,
         marginTop: 20,
     },
+    progressContainer: {
+        marginHorizontal: 20,
+        marginBottom: 25,
+        borderRadius: 20,
+        overflow: 'hidden',
+        shadowColor: "#ff6b9d",
+        shadowOffset: {
+            width: 0,
+            height: 8,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 20,
+        elevation: 15,
+    },
+    progressGradient: {
+        padding: 25,
+        alignItems: 'center',
+    },
+    progressTitle: {
+        fontSize: 20,
+        fontWeight: "800",
+        color: "#1e293b",
+        marginBottom: 20,
+        textAlign: 'center',
+    },
+    progressBarContainer: {
+        width: '100%',
+        marginBottom: 15,
+    },
+    progressBarBackground: {
+        height: 8,
+        backgroundColor: '#e2e8f0',
+        borderRadius: 4,
+        overflow: 'hidden',
+    },
+    progressBarFill: {
+        height: '100%',
+        borderRadius: 4,
+        overflow: 'hidden',
+    },
+    progressGradientFill: {
+        flex: 1,
+    },
+    progressPercentage: {
+        fontSize: 16,
+        fontWeight: "700",
+        color: "#64748b",
+        marginBottom: 20,
+    },
+    loadingDotsContainer: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    loadingDot: {
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: '#ff6b9d',
+        marginHorizontal: 4,
+    },
     section: {
         marginHorizontal: 20,
         marginBottom: 25,
@@ -438,6 +912,12 @@ const styles = StyleSheet.create({
         lineHeight: 24,
         fontWeight: "500",
     },
+    sectionHint: {
+        fontSize: 14,
+        color: "#94a3b8",
+        fontStyle: 'italic',
+        marginTop: 8,
+    },
     inputContainer: {
         marginBottom: 10,
     },
@@ -473,14 +953,15 @@ const styles = StyleSheet.create({
         borderColor: "#ff6b9d",
         backgroundColor: "rgba(255,255,255,0.95)",
     },
+    textInputDisabled: {
+        opacity: 0.6,
+        backgroundColor: "rgba(255,255,255,0.5)",
+    },
     inputIcon: {
         position: 'absolute',
         right: 15,
         top: '50%',
         transform: [{ translateY: -12 }],
-    },
-    inputIconText: {
-        fontSize: 20,
     },
     inputHint: {
         fontSize: 14,
@@ -520,6 +1001,14 @@ const styles = StyleSheet.create({
         shadowRadius: 20,
         elevation: 15,
     },
+    detailedCard: {
+        borderColor: "#8b5a9f",
+        shadowColor: "#8b5a9f",
+        shadowOpacity: 0.4,
+    },
+    disabledCard: {
+        opacity: 0.5,
+    },
     cardImage: {
         width: "100%",
         height: 140,
@@ -542,6 +1031,14 @@ const styles = StyleSheet.create({
         textShadowColor: 'rgba(0,0,0,0.8)',
         textShadowOffset: { width: 0, height: 1 },
         textShadowRadius: 3,
+    },
+    cardDescription: {
+        color: "#ffffff",
+        fontSize: 12,
+        fontWeight: "500",
+        textAlign: "center",
+        marginTop: 4,
+        opacity: 0.9,
     },
     selectedIndicator: {
         position: "absolute",
@@ -566,11 +1063,6 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         alignItems: "center",
     },
-    selectedText: {
-        color: "#ffffff",
-        fontSize: 16,
-        fontWeight: "bold",
-    },
     shimmerContainer: {
         position: 'absolute',
         top: 0,
@@ -582,10 +1074,51 @@ const styles = StyleSheet.create({
     shimmer: {
         position: 'absolute',
         top: 0,
-        left: '-100%',
+        left: 0,
         right: 0,
         bottom: 0,
-        width: '200%',
+        width: '100%',
+    },
+    shimmerGradient: {
+        flex: 1,
+    },
+    cardDetailsOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    cardDetailsGradient: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    cardDetailsTitle: {
+        color: "#ffffff",
+        fontSize: 18,
+        fontWeight: "800",
+        textAlign: "center",
+        marginBottom: 8,
+    },
+    cardDetailsDescription: {
+        color: "#ffffff",
+        fontSize: 14,
+        fontWeight: "500",
+        textAlign: "center",
+        opacity: 0.9,
+    },
+    cardDetailsIcon: {
+        position: 'absolute',
+        top: 10,
+        right: 10,
     },
     submitContainer: {
         padding: 20,
@@ -613,6 +1146,11 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'center',
     },
+    submitProcessing: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
     submitButtonText: {
         color: "#ffffff",
         fontSize: 20,
@@ -624,8 +1162,5 @@ const styles = StyleSheet.create({
     },
     submitIcon: {
         marginLeft: 10,
-    },
-    submitIconText: {
-        fontSize: 20,
     },
 })
