@@ -1,6 +1,5 @@
 "use client"
 
-import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as SecureStore from "expo-secure-store";
@@ -10,34 +9,31 @@ import {
     Alert,
     Animated,
     Dimensions,
-    Easing,
     Image,
-    Platform,
     SafeAreaView,
     ScrollView,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
-    Vibration,
-    View,
+    View
 } from "react-native";
 
 const { width, height } = Dimensions.get("window")
 
 const cards = [
-    { id: 1, name: "Adventure", image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745482/d5af474050c2ff7773f174745759d874_wgezje.jpg", description: "Seeking thrill and excitement" },
-    { id: 2, name: "Romance", image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745482/f80878eec037881744073d55f1479947_chr4zt.jpg", description: "Love and deep connections" },
-    { id: 3, name: "Mystery", image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745481/cf1ad304328fb5d9e6986bade94418fc_ygqcxa.jpg", description: "Intrigue and discovery" },
-    { id: 4, name: "Classic", image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745481/99_tuuquh.png", description: "Timeless and traditional" },
-    { id: 5, name: "Nature", image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745481/2_btcngo.jpg", description: "Organic and natural vibes" },
-    { id: 6, name: "Urban", image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745481/5_w4c8i6.jpg", description: "City life and energy" },
-    { id: 7, name: "Elegant", image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745481/1_htkc6n.jpg", description: "Sophisticated and refined" },
-    { id: 8, name: "Creative", image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745481/4_mcmdcv.jpg", description: "Artistic and imaginative" },
-    { id: 9, name: "Artistic", image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745481/4_mcmdcv.jpg", description: "Expressive and creative" },
-    { id: 10, name: "Modern", image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745481/4_mcmdcv.jpg", description: "Contemporary and fresh" },
-    { id: 11, name: "Vintage", image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745481/4_mcmdcv.jpg", description: "Retro and nostalgic" },
-    { id: 12, name: "Bold", image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745481/4_mcmdcv.jpg", description: "Confident and daring" },
+    { id: 1, name: "Adventure", image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745482/d5af474050c2ff7773f174745759d874_wgezje.jpg" },
+    { id: 2, name: "Romance", image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745482/f80878eec037881744073d55f1479947_chr4zt.jpg" },
+    { id: 3, name: "Mystery", image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745481/cf1ad304328fb5d9e6986bade94418fc_ygqcxa.jpg" },
+    { id: 4, name: "Classic", image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745481/99_tuuquh.png" },
+    { id: 5, name: "Nature", image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745481/2_btcngo.jpg" },
+    { id: 6, name: "Urban", image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745481/5_w4c8i6.jpg" },
+    { id: 7, name: "Elegant", image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745481/1_htkc6n.jpg" },
+    { id: 8, name: "Creative", image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745481/4_mcmdcv.jpg" },
+    { id: 9, name: "Artistic", image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745481/4_mcmdcv.jpg" },
+    { id: 10, name: "Modern", image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745481/4_mcmdcv.jpg" },
+    { id: 11, name: "Vintage", image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745481/4_mcmdcv.jpg" },
+    { id: 12, name: "Bold", image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745481/4_mcmdcv.jpg" },
 ]
 
 // Processing states for better UX
@@ -62,48 +58,26 @@ export default function App() {
     const [processingState, setProcessingState] = useState(PROCESSING_STATES.IDLE)
     const [matchResults, setMatchResults] = useState(null)
     const [progressValue, setProgressValue] = useState(0)
-    const [showCardDetails, setShowCardDetails] = useState<number | null>(null)
 
-    // Enhanced animations
     const scaleAnim = useRef(new Animated.Value(1)).current
     const fadeAnim = useRef(new Animated.Value(0)).current
     const slideAnim = useRef(new Animated.Value(50)).current
     const progressAnim = useRef(new Animated.Value(0)).current
     const pulseAnim = useRef(new Animated.Value(1)).current
-    const cardScaleAnim = useRef(new Animated.Value(1)).current
-    const cardRotateAnim = useRef(new Animated.Value(0)).current
-    const shimmerAnim = useRef(new Animated.Value(0)).current
-    const inputFocusAnim = useRef(new Animated.Value(0)).current
 
     React.useEffect(() => {
-        // Enhanced entrance animations
         Animated.parallel([
             Animated.timing(fadeAnim, {
                 toValue: 1,
-                duration: 1200,
-                easing: Easing.out(Easing.cubic),
+                duration: 1000,
                 useNativeDriver: true,
             }),
             Animated.timing(slideAnim, {
                 toValue: 0,
-                duration: 1000,
-                easing: Easing.out(Easing.back(1.2)),
+                duration: 800,
                 useNativeDriver: true,
             })
         ]).start()
-
-        // Shimmer animation for selected cards
-        if (selectedCard) {
-            const shimmerLoop = Animated.loop(
-                Animated.timing(shimmerAnim, {
-                    toValue: 1,
-                    duration: 2000,
-                    useNativeDriver: false,
-                })
-            )
-            shimmerLoop.start()
-            return () => shimmerLoop.stop()
-        }
 
         // Pulse animation for processing state
         if (processingState !== PROCESSING_STATES.IDLE) {
@@ -124,84 +98,36 @@ export default function App() {
             pulseAnimation.start()
             return () => pulseAnimation.stop()
         }
-    }, [processingState, selectedCard])
+    }, [processingState])
 
     const animateProgress = (toValue: number) => {
         Animated.timing(progressAnim, {
             toValue,
             duration: 1000,
-            easing: Easing.out(Easing.cubic),
             useNativeDriver: false,
         }).start(() => {
             setProgressValue(toValue)
         })
     }
 
-    const handleCardPress = (cardImage: string, cardId: number) => {
+    const handleCardPress = (cardImage: string) => {
         if (processingState !== PROCESSING_STATES.IDLE) return
-
-        // Haptic feedback
-        if (Platform.OS === 'ios') {
-            Vibration.vibrate(1)
-        }
 
         setSelectedCard(cardImage)
 
-        // Enhanced card selection animation
+        // Animate selection
         Animated.sequence([
-            Animated.timing(cardScaleAnim, {
+            Animated.timing(scaleAnim, {
                 toValue: 0.95,
                 duration: 100,
                 useNativeDriver: true,
             }),
-            Animated.timing(cardScaleAnim, {
-                toValue: 1.05,
-                duration: 150,
-                useNativeDriver: true,
-            }),
-            Animated.timing(cardScaleAnim, {
+            Animated.timing(scaleAnim, {
                 toValue: 1,
                 duration: 100,
                 useNativeDriver: true,
             })
         ]).start()
-
-        // Card rotation effect
-        Animated.sequence([
-            Animated.timing(cardRotateAnim, {
-                toValue: 1,
-                duration: 200,
-                useNativeDriver: true,
-            }),
-            Animated.timing(cardRotateAnim, {
-                toValue: 0,
-                duration: 200,
-                useNativeDriver: true,
-            })
-        ]).start()
-    }
-
-    const handleCardLongPress = (cardId: number) => {
-        if (Platform.OS === 'ios') {
-            Vibration.vibrate(2)
-        }
-        setShowCardDetails(showCardDetails === cardId ? null : cardId)
-    }
-
-    const handleInputFocus = () => {
-        Animated.timing(inputFocusAnim, {
-            toValue: 1,
-            duration: 200,
-            useNativeDriver: false,
-        }).start()
-    }
-
-    const handleInputBlur = () => {
-        Animated.timing(inputFocusAnim, {
-            toValue: 0,
-            duration: 200,
-            useNativeDriver: false,
-        }).start()
     }
 
     const processUserEmbedding = async (userId: string) => {
@@ -303,11 +229,6 @@ export default function App() {
 
     const handleSubmit = async () => {
         if (!range || selectedCard === null) {
-            // Enhanced validation feedback
-            if (Platform.OS === 'ios') {
-                Vibration.vibrate(3)
-            }
-            
             Alert.alert("Oops! 💭", "Please fill in all required fields to continue your journey", [
                 { text: "Got it! ✨", style: "default" }
             ])
@@ -316,10 +237,6 @@ export default function App() {
 
         const rangeNum = Number.parseInt(range)
         if (isNaN(rangeNum) || rangeNum < 100 || rangeNum > 100000) {
-            if (Platform.OS === 'ios') {
-                Vibration.vibrate(3)
-            }
-            
             Alert.alert("Invalid Range 📍", "Please enter a valid geographic range (100-100000 meters)", [
                 { text: "Try Again 🔄", style: "default" }
             ])
@@ -395,15 +312,9 @@ export default function App() {
 
     const renderCard = (card: (typeof cards)[0], index: number) => {
         const isSelected = selectedCard === card.image
-        const isDetailed = showCardDetails === card.id
         const cardWidth = (width - 60) / 2
         const cardDelay = index * 100
         const isDisabled = processingState !== PROCESSING_STATES.IDLE
-
-        const shimmerTranslateX = shimmerAnim.interpolate({
-            inputRange: [0, 1],
-            outputRange: ['-100%', '100%'],
-        })
 
         return (
             <Animated.View
@@ -420,9 +331,7 @@ export default function App() {
                                 outputRange: [0, cardDelay / 10],
                             })
                         },
-                        { 
-                            scale: isSelected ? Animated.multiply(cardScaleAnim, scaleAnim) : 1
-                        }
+                        { scale: isSelected ? scaleAnim : 1 }
                     ]
                 }}
             >
@@ -431,74 +340,44 @@ export default function App() {
                         styles.cardContainer,
                         { width: cardWidth },
                         isSelected && styles.selectedCard,
-                        isDisabled && styles.disabledCard,
-                        isDetailed && styles.detailedCard
+                        isDisabled && styles.disabledCard
                     ]}
-                    onPress={() => handleCardPress(card.image, card.id)}
-                    onLongPress={() => handleCardLongPress(card.id)}
+                    onPress={() => handleCardPress(card.image)}
                     disabled={isDisabled}
                     activeOpacity={0.8}
                 >
                     <Image source={{ uri: card.image }} style={styles.cardImage} />
 
-                    {/* Enhanced Gradient Overlay */}
+                    {/* Gradient Overlay */}
                     <LinearGradient
-                        colors={['transparent', 'rgba(0,0,0,0.9)']}
+                        colors={['transparent', 'rgba(0,0,0,0.8)']}
                         style={styles.cardGradient}
                     >
                         <Text style={styles.cardName}>{card.name}</Text>
-                        {isDetailed && (
-                            <Text style={styles.cardDescription}>{card.description}</Text>
-                        )}
                     </LinearGradient>
 
-                    {/* Enhanced Selection Indicator */}
+                    {/* Selection Indicator with Animation */}
                     {isSelected && (
                         <Animated.View style={[styles.selectedIndicator, { transform: [{ scale: scaleAnim }] }]}>
                             <LinearGradient
                                 colors={['#ff6b9d', '#c44569']}
                                 style={styles.selectedGradient}
                             >
-                                <Ionicons name="checkmark" size={20} color="#ffffff" />
+                                <Text style={styles.selectedText}>✨</Text>
                             </LinearGradient>
                         </Animated.View>
                     )}
 
-                    {/* Enhanced Shimmer Effect */}
+                    {/* Shimmer Effect for Selected Card */}
                     {isSelected && (
                         <View style={styles.shimmerContainer}>
-                            <Animated.View
-                                style={[
-                                    styles.shimmer,
-                                    {
-                                        transform: [{ translateX: shimmerTranslateX }]
-                                    }
-                                ]}
-                            >
-                                <LinearGradient
-                                    colors={['transparent', 'rgba(255,255,255,0.6)', 'transparent']}
-                                    start={{ x: 0, y: 0 }}
-                                    end={{ x: 1, y: 0 }}
-                                    style={styles.shimmerGradient}
-                                />
-                            </Animated.View>
-                        </View>
-                    )}
-
-                    {/* Card Details Overlay */}
-                    {isDetailed && (
-                        <Animated.View style={[styles.cardDetailsOverlay, { opacity: fadeAnim }]}>
                             <LinearGradient
-                                colors={['rgba(0,0,0,0.8)', 'rgba(0,0,0,0.9)']}
-                                style={styles.cardDetailsGradient}
-                            >
-                                <Text style={styles.cardDetailsTitle}>{card.name}</Text>
-                                <Text style={styles.cardDetailsDescription}>{card.description}</Text>
-                                <View style={styles.cardDetailsIcon}>
-                                    <Ionicons name="information-circle" size={24} color="#ffffff" />
-                                </View>
-                            </LinearGradient>
-                        </Animated.View>
+                                colors={['transparent', 'rgba(255,255,255,0.4)', 'transparent']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
+                                style={styles.shimmer}
+                            />
+                        </View>
                     )}
                 </TouchableOpacity>
             </Animated.View>
@@ -517,7 +396,7 @@ export default function App() {
             />
 
             <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-                {/* Enhanced Animated Header */}
+                {/* Animated Header with Blur Effect */}
                 <Animated.View style={[styles.headerContainer, { opacity: fadeAnim }]}>
                     <BlurView intensity={20} style={styles.headerBlur}>
                         <LinearGradient
@@ -541,7 +420,7 @@ export default function App() {
                     </BlurView>
                 </Animated.View>
 
-                {/* Enhanced Processing Progress Bar */}
+                {/* Processing Progress Bar */}
                 {isProcessing && (
                     <Animated.View style={[styles.progressContainer, { opacity: fadeAnim }]}>
                         <LinearGradient
@@ -605,7 +484,7 @@ export default function App() {
                     </Animated.View>
                 )}
 
-                {/* Enhanced Geographic Range Section */}
+                {/* Geographic Range Section */}
                 <Animated.View
                     style={[
                         styles.section,
@@ -634,17 +513,7 @@ export default function App() {
 
                         <View style={styles.inputContainer}>
                             <Text style={styles.inputLabel}>Distance in Meters</Text>
-                            <Animated.View style={[
-                                styles.inputWrapper,
-                                {
-                                    transform: [{
-                                        scale: inputFocusAnim.interpolate({
-                                            inputRange: [0, 1],
-                                            outputRange: [1, 1.02]
-                                        })
-                                    }]
-                                }
-                            ]}>
+                            <View style={styles.inputWrapper}>
                                 <TextInput
                                     style={[
                                         styles.textInput,
@@ -658,13 +527,11 @@ export default function App() {
                                     keyboardType="numeric"
                                     maxLength={6}
                                     editable={!isProcessing}
-                                    onFocus={handleInputFocus}
-                                    onBlur={handleInputBlur}
                                 />
                                 <View style={styles.inputIcon}>
-                                    <Ionicons name="location" size={20} color="#ff6b9d" />
+                                    <Text style={styles.inputIconText}>📏</Text>
                                 </View>
-                            </Animated.View>
+                            </View>
                             <Text style={styles.inputHint}>
                                 💡 Sweet spot: 1000-50000 meters (1-50 km)
                             </Text>
@@ -672,7 +539,7 @@ export default function App() {
                     </LinearGradient>
                 </Animated.View>
 
-                {/* Enhanced Card Selection Section */}
+                {/* Card Selection Section */}
                 <Animated.View
                     style={[
                         styles.section,
@@ -697,9 +564,6 @@ export default function App() {
                             <Text style={styles.sectionDescription}>
                                 Choose the card that resonates with your soul
                             </Text>
-                            <Text style={styles.sectionHint}>
-                                💡 Long press any card for more details
-                            </Text>
                         </View>
 
                         <View style={styles.cardsGrid}>
@@ -708,7 +572,7 @@ export default function App() {
                     </LinearGradient>
                 </Animated.View>
 
-                {/* Enhanced Submit Button */}
+                {/* Submit Button with Enhanced Design */}
                 <Animated.View
                     style={[
                         styles.submitContainer,
@@ -748,7 +612,7 @@ export default function App() {
                                         🚀 Find My Soulmate
                                     </Text>
                                     <View style={styles.submitIcon}>
-                                        <Ionicons name="heart" size={24} color="#ffffff" />
+                                        <Text style={styles.submitIconText}>💖</Text>
                                     </View>
                                 </>
                             )}
@@ -912,12 +776,6 @@ const styles = StyleSheet.create({
         lineHeight: 24,
         fontWeight: "500",
     },
-    sectionHint: {
-        fontSize: 14,
-        color: "#94a3b8",
-        fontStyle: 'italic',
-        marginTop: 8,
-    },
     inputContainer: {
         marginBottom: 10,
     },
@@ -963,6 +821,9 @@ const styles = StyleSheet.create({
         top: '50%',
         transform: [{ translateY: -12 }],
     },
+    inputIconText: {
+        fontSize: 20,
+    },
     inputHint: {
         fontSize: 14,
         color: "#94a3b8",
@@ -1001,11 +862,6 @@ const styles = StyleSheet.create({
         shadowRadius: 20,
         elevation: 15,
     },
-    detailedCard: {
-        borderColor: "#8b5a9f",
-        shadowColor: "#8b5a9f",
-        shadowOpacity: 0.4,
-    },
     disabledCard: {
         opacity: 0.5,
     },
@@ -1032,14 +888,6 @@ const styles = StyleSheet.create({
         textShadowOffset: { width: 0, height: 1 },
         textShadowRadius: 3,
     },
-    cardDescription: {
-        color: "#ffffff",
-        fontSize: 12,
-        fontWeight: "500",
-        textAlign: "center",
-        marginTop: 4,
-        opacity: 0.9,
-    },
     selectedIndicator: {
         position: "absolute",
         top: 12,
@@ -1063,6 +911,11 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         alignItems: "center",
     },
+    selectedText: {
+        color: "#ffffff",
+        fontSize: 16,
+        fontWeight: "bold",
+    },
     shimmerContainer: {
         position: 'absolute',
         top: 0,
@@ -1074,51 +927,10 @@ const styles = StyleSheet.create({
     shimmer: {
         position: 'absolute',
         top: 0,
-        left: 0,
+        left: '-100%',
         right: 0,
         bottom: 0,
-        width: '100%',
-    },
-    shimmerGradient: {
-        flex: 1,
-    },
-    cardDetailsOverlay: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    cardDetailsGradient: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 20,
-    },
-    cardDetailsTitle: {
-        color: "#ffffff",
-        fontSize: 18,
-        fontWeight: "800",
-        textAlign: "center",
-        marginBottom: 8,
-    },
-    cardDetailsDescription: {
-        color: "#ffffff",
-        fontSize: 14,
-        fontWeight: "500",
-        textAlign: "center",
-        opacity: 0.9,
-    },
-    cardDetailsIcon: {
-        position: 'absolute',
-        top: 10,
-        right: 10,
+        width: '200%',
     },
     submitContainer: {
         padding: 20,
@@ -1162,5 +974,8 @@ const styles = StyleSheet.create({
     },
     submitIcon: {
         marginLeft: 10,
+    },
+    submitIconText: {
+        fontSize: 20,
     },
 })
