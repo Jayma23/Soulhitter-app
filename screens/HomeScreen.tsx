@@ -1,111 +1,185 @@
-import ChatListTabView from "@/screens/ChatListTabView";
-import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import { BlurView } from 'expo-blur';
-import { LinearGradient } from 'expo-linear-gradient';
-import * as SecureStore from 'expo-secure-store';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
-    Alert,
-    Animated,
-    Dimensions,
-    Easing,
-    Image,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    Vibration,
     View,
+    Text,
+    StyleSheet,
+    ScrollView,
+    TouchableOpacity,
+    Dimensions,
+    StatusBar,
+    Animated,
+    Alert,
+    Platform,
+    Vibration,
+    Easing,
+    SafeAreaView
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useUser } from './UserContext';
+import { useNavigation } from '@react-navigation/native';
+import * as SecureStore from 'expo-secure-store';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 const { width, height } = Dimensions.get('window');
+import { useUser } from './UserContext';
+import { Image } from 'react-native';
+import ChatListScreen from "@/screens/ChatListScreen";
+
 
 export default function HomeScreen() {
     const navigation = useNavigation<any>();
     const [isLoading, setIsLoading] = useState(false);
+    //const [userName, setUserName] = useState('User');
+    const [currentTime, setCurrentTime] = useState(new Date());
     const [activeTab, setActiveTab] = useState(0);
-    const [showProfileMenu, setShowProfileMenu] = useState(false);
-    const [lastTap, setLastTap] = useState(0);
+    //const [userPhoto, setUserPhoto] = useState<string | null>(null);
     const { user } = useUser();
-    const insets = useSafeAreaInsets();
 
-    // Enhanced Animation values
+
+
+    // Animation values
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const slideAnim = useRef(new Animated.Value(30)).current;
     const pulseAnim = useRef(new Animated.Value(1)).current;
     const sparkleAnim = useRef(new Animated.Value(0)).current;
-    const floatAnim = useRef(new Animated.Value(0)).current;
-    const profileMenuAnim = useRef(new Animated.Value(0)).current;
-    const cardScaleAnim = useRef(new Animated.Value(1)).current;
-    const tabBarAnim = useRef(new Animated.Value(0)).current;
-    const headerAnim = useRef(new Animated.Value(0)).current;
+
+    /*useEffect(() => {
+        const loadUserInfo = async () => {
+            const name = await SecureStore.getItemAsync('name1');
+            const photo = await SecureStore.getItemAsync('photo');
+            if (name) setUserName(name);
+            if (photo) setUserPhoto(photo);
+        };
+
+        loadUserInfo();
+    }, []);
+    */
+
+    console.log(user?.photo)
+    console.log(user?.name)
+
+    const requestCameraPermission = async () => {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== 'granted') {
+            Alert.alert('Permission required', 'We need camera access to take a selfie');
+            return false;
+        }
+        return true;
+    };
+    //console.log(userName)
+
+    const uploadToCloudinary = async (uri: string) => {
+        const data = new FormData();
+        const response = await fetch(uri);
+        const blob = await response.blob();
+
+        data.append('file', blob as any, 'selfie.jpg');
+        data.append('upload_preset', '<YOUR_UPLOAD_PRESET>');
+
+        const res = await fetch('https://api.cloudinary.com/v1_1/dyedqw0mv/image/upload', {
+            method: 'POST',
+            body: data
+        });
+
+        const result = await res.json();
+        return result.secure_url;
+    };
+
+    const handleVerifyWithSelfie = async () => {
+        try {
+            const userId = await SecureStore.getItemAsync('user_id');
+            if (!userId) {
+                Alert.alert('Error', 'Missing user ID');
+                return;
+            }
+
+            const hasPermission = await requestCameraPermission();
+            if (!hasPermission) return;
+
+            const result = await ImagePicker.launchCameraAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                quality: 0.7
+            });
+
+            if (result.canceled) {
+                Alert.alert('Cancelled', 'No image captured');
+                return;
+            }
+
+            setIsLoading(true);
+            const photoUri = result.assets[0].uri;
+            const selfieUrl = await uploadToCloudinary(photoUri);
+            console.log({ userId, selfieUrl });
+
+            const res = await fetch('https://ccbackendx-2.onrender.com/verify/identity', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_id: userId,
+                    selfie_url: selfieUrl
+                })
+            });
+
+            const data = await res.json();
+            if (data.verified) {
+                Alert.alert('Success', 'Identity verified!');
+            } else {
+                Alert.alert('Failed', data.message || 'Face verification failed');
+            }
+        } catch (err) {
+            console.error('Verification error', err);
+            Alert.alert('Error', 'Verification process failed');
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     useEffect(() => {
-        // Enhanced entrance animations
+        // Entrance animations
         Animated.parallel([
             Animated.timing(fadeAnim, {
                 toValue: 1,
-                duration: 1200,
+                duration: 1000,
                 easing: Easing.out(Easing.cubic),
                 useNativeDriver: true,
             }),
             Animated.timing(slideAnim, {
                 toValue: 0,
-                duration: 1000,
-                easing: Easing.out(Easing.back(1.2)),
-                useNativeDriver: true,
-            }),
-            Animated.timing(headerAnim, {
-                toValue: 1,
                 duration: 800,
-                easing: Easing.out(Easing.cubic),
-                useNativeDriver: true,
-            }),
-            Animated.timing(tabBarAnim, {
-                toValue: 1,
-                duration: 1000,
-                delay: 300,
                 easing: Easing.out(Easing.back(1.1)),
                 useNativeDriver: true,
             })
         ]).start();
 
-        // Enhanced sparkle animation
+        // Sparkle animation for featured card
         const sparkleLoop = Animated.loop(
             Animated.sequence([
                 Animated.timing(sparkleAnim, {
                     toValue: 1,
-                    duration: 4000,
-                    easing: Easing.inOut(Easing.sin),
+                    duration: 2000,
                     useNativeDriver: true,
                 }),
                 Animated.timing(sparkleAnim, {
                     toValue: 0,
-                    duration: 4000,
-                    easing: Easing.inOut(Easing.sin),
+                    duration: 2000,
                     useNativeDriver: true,
                 })
             ])
         );
         sparkleLoop.start();
 
-        // Enhanced pulse animation
+        // Pulse animation for featured card
         const pulseLoop = Animated.loop(
             Animated.sequence([
                 Animated.timing(pulseAnim, {
-                    toValue: 1.03,
-                    duration: 3000,
+                    toValue: 1.02,
+                    duration: 2000,
                     easing: Easing.inOut(Easing.sin),
                     useNativeDriver: true,
                 }),
                 Animated.timing(pulseAnim, {
                     toValue: 1,
-                    duration: 3000,
+                    duration: 2000,
                     easing: Easing.inOut(Easing.sin),
                     useNativeDriver: true,
                 })
@@ -113,37 +187,71 @@ export default function HomeScreen() {
         );
         pulseLoop.start();
 
-        // Enhanced float animation
-        const floatLoop = Animated.loop(
-            Animated.sequence([
-                Animated.timing(floatAnim, {
-                    toValue: 1,
-                    duration: 5000,
-                    easing: Easing.inOut(Easing.sin),
-                    useNativeDriver: true,
-                }),
-                Animated.timing(floatAnim, {
-                    toValue: 0,
-                    duration: 5000,
-                    easing: Easing.inOut(Easing.sin),
-                    useNativeDriver: true,
-                })
-            ])
-        );
-        floatLoop.start();
+        loadUserData();
+
+        const timeInterval = setInterval(() => {
+            setCurrentTime(new Date());
+        }, 60000);
 
         return () => {
+            clearInterval(timeInterval);
             sparkleLoop.stop();
             pulseLoop.stop();
-            floatLoop.stop();
         };
     }, []);
 
-    const handleLogout = async () => {
-        // Enhanced haptic feedback
-        if (Platform.OS === 'ios') {
-            Vibration.vibrate(2);
+    const loadUserData = async () => {
+        try {
+            const userId = await SecureStore.getItemAsync('user_id');
+            // You could fetch user name from API here
+        } catch (error) {
+            console.error('Error loading user data:', error);
         }
+    };
+
+    const handleQuickMatch = async () => {
+        if (Platform.OS === 'ios') {
+            Vibration.vibrate();
+        }
+
+        setIsLoading(true);
+
+        try {
+            const user_id = await SecureStore.getItemAsync('user_id');
+            console.log('🔐 Retrieved user_id:', user_id);
+
+            if (!user_id) {
+                Alert.alert('Error', 'Missing user ID from SecureStore');
+                return;
+            }
+
+            const res = await fetch('https://ccbackendx-2.onrender.com/match/quick', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id }),
+            });
+
+            if (!res.ok) {
+                const text = await res.text();
+                console.error('❌ Match check failed:', res.status, text);
+                throw new Error('Match check failed');
+            }
+
+            const data = await res.json();
+            if (res.ok) {
+                navigation.navigate('Waiting');
+            } else {
+                Alert.alert('Error', data.error || 'Quick Match failed');
+            }
+        } catch (err) {
+            console.error('Quick Match error:', err);
+            Alert.alert('Server Error', 'Something went wrong');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleLogout = async () => {
 
         Alert.alert(
             'Logout',
@@ -157,6 +265,10 @@ export default function HomeScreen() {
                         try {
                             await SecureStore.deleteItemAsync('user_id');
                             await SecureStore.deleteItemAsync('token');
+                            //setUserName('');
+                            //setUserPhoto('');
+
+
                             navigation.reset({
                                 index: 0,
                                 routes: [{ name: 'Login' }],
@@ -172,61 +284,38 @@ export default function HomeScreen() {
     };
 
     const getGreeting = () => {
-        const hour = new Date().getHours();
+        const hour = currentTime.getHours();
         if (hour < 12) return 'Good Morning';
         if (hour < 17) return 'Good Afternoon';
         if (hour < 21) return 'Good Evening';
         return 'Good Night';
     };
 
-    const handleProfilePress = () => {
-        // Enhanced haptic feedback
-        if (Platform.OS === 'ios') {
-            Vibration.vibrate(1);
-        }
-
-        const now = Date.now();
-        const DOUBLE_TAP_DELAY = 300;
-
-        if (lastTap && (now - lastTap) < DOUBLE_TAP_DELAY) {
-            // Double tap detected - show profile menu
-            setShowProfileMenu(!showProfileMenu);
-            Animated.timing(profileMenuAnim, {
-                toValue: showProfileMenu ? 0 : 1,
-                duration: 300,
-                easing: Easing.out(Easing.cubic),
-                useNativeDriver: true,
-            }).start();
-        } else {
-            // Single tap - navigate to profile
-            navigation.navigate('profileUpdate');
-        }
-        setLastTap(now);
-    };
-
-    // Enhanced Beautiful Feature Card
-    const BeautifulFeatureCard = ({ onPress, loading = false }: any) => {
+    const FeatureCard = ({
+                             title,
+                             subtitle,
+                             iconName,
+                             gradientColors,
+                             onPress,
+                             loading = false,
+                             featured = false
+                         }: any) => {
         const cardScale = useRef(new Animated.Value(1)).current;
-        const buttonGlow = useRef(new Animated.Value(0)).current;
         const cardRotate = useRef(new Animated.Value(0)).current;
+        const iconScale = useRef(new Animated.Value(1)).current;
 
         const handlePressIn = () => {
-            if (Platform.OS === 'ios') {
-                Vibration.vibrate(1);
-            }
-
             Animated.parallel([
                 Animated.spring(cardScale, {
-                    toValue: 0.98,
+                    toValue: 0.96,
                     useNativeDriver: true,
                 }),
-                Animated.timing(buttonGlow, {
-                    toValue: 1,
-                    duration: 150,
+                Animated.spring(iconScale, {
+                    toValue: 1.1,
                     useNativeDriver: true,
                 }),
                 Animated.timing(cardRotate, {
-                    toValue: 1,
+                    toValue: featured ? 1 : 0.5,
                     duration: 200,
                     useNativeDriver: true,
                 })
@@ -239,9 +328,8 @@ export default function HomeScreen() {
                     toValue: 1,
                     useNativeDriver: true,
                 }),
-                Animated.timing(buttonGlow, {
-                    toValue: 0,
-                    duration: 150,
+                Animated.spring(iconScale, {
+                    toValue: 1,
                     useNativeDriver: true,
                 }),
                 Animated.timing(cardRotate, {
@@ -251,21 +339,6 @@ export default function HomeScreen() {
                 })
             ]).start();
         };
-
-        const floatInterpolate = floatAnim.interpolate({
-            inputRange: [0, 1],
-            outputRange: [0, -3]
-        });
-
-        const sparkleOpacity = sparkleAnim.interpolate({
-            inputRange: [0, 1],
-            outputRange: [0.1, 0.3]
-        });
-
-        const glowOpacity = buttonGlow.interpolate({
-            inputRange: [0, 1],
-            outputRange: [0, 0.6]
-        });
 
         const rotateInterpolate = cardRotate.interpolate({
             inputRange: [0, 1],
@@ -275,78 +348,72 @@ export default function HomeScreen() {
         return (
             <Animated.View
                 style={[
-                    styles.cardWrapper,
+                    styles.cardContainer,
+                    featured && styles.featuredCard,
                     {
                         opacity: fadeAnim,
                         transform: [
-                            { translateY: Animated.add(slideAnim, floatInterpolate) },
-                            { scale: Animated.multiply(pulseAnim, cardScale) },
+                            { translateY: slideAnim },
+                            { scale: featured ? pulseAnim : cardScale },
                             { rotate: rotateInterpolate }
                         ]
                     }
                 ]}
             >
-                {/* Enhanced glow effect */}
-                <Animated.View
-                    style={[
-                        styles.cardGlow,
-                        { opacity: glowOpacity }
-                    ]}
-                />
-
                 <TouchableOpacity
                     onPress={onPress}
                     onPressIn={handlePressIn}
                     onPressOut={handlePressOut}
                     disabled={loading}
-                    style={styles.card}
+                    style={[styles.card, featured && styles.featuredCardInner]}
                     activeOpacity={1}
                 >
                     <LinearGradient
-                        colors={['#667eea', '#764ba2', '#f093fb', '#f5576c']}
-                        style={styles.cardGradient}
+                        colors={gradientColors}
+                        style={[styles.cardGradient, featured && styles.featuredGradient]}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 1 }}
                     >
-                        {/* Enhanced sparkle overlay */}
-                        <Animated.View
-                            style={[
-                                styles.sparkleOverlay,
-                                { opacity: sparkleOpacity }
-                            ]}
-                        />
-
-                        {/* Enhanced featured badge */}
-                        <View style={styles.featuredBadge}>
-                            <Ionicons name="star" size={12} color="#1a1f3a" />
-                            <Text style={styles.featuredText}> FEATURED</Text>
-                        </View>
-
+                        {featured && (
+                            <>
+                                <View style={styles.featuredBadge}>
+                                    <Text style={styles.featuredBadgeText}>✨ FEATURED</Text>
+                                </View>
+                                <Animated.View
+                                    style={[
+                                        styles.sparkleOverlay,
+                                        { opacity: sparkleAnim }
+                                    ]}
+                                />
+                            </>
+                        )}
                         <View style={styles.cardContent}>
-                            {/* Enhanced icon */}
-                            <View style={styles.iconContainer}>
-                                <LinearGradient
-                                    colors={['rgba(255,255,255,0.25)', 'rgba(255,255,255,0.15)']}
-                                    style={styles.iconBackground}
-                                >
-                                    <Ionicons name="heart" size={28} color="#ffffff" />
-                                </LinearGradient>
-                            </View>
-
-                            {/* Enhanced text content */}
-                            <View style={styles.textContent}>
-                                <Text style={styles.cardTitle}>Deep Match</Text>
-                                <Text style={styles.cardSubtitle}>
-                                    Find a card that can represent you
+                            <Animated.View
+                                style={[
+                                    styles.cardIcon,
+                                    featured && styles.featuredIcon,
+                                    { transform: [{ scale: iconScale }] }
+                                ]}
+                            >
+                                <Ionicons
+                                    name={iconName}
+                                    size={featured ? 32 : 28}
+                                    color="#ffffff"
+                                />
+                            </Animated.View>
+                            <View style={styles.cardText}>
+                                <Text style={[styles.cardTitle, featured && styles.featuredTitle]}>
+                                    {title}
+                                </Text>
+                                <Text style={[styles.cardSubtitle, featured && styles.featuredSubtitle]}>
+                                    {subtitle}
                                 </Text>
                             </View>
-
-                            {/* Enhanced arrow */}
-                            <View style={styles.arrowContainer}>
+                            <View style={styles.cardArrow}>
                                 {loading ? (
                                     <Animated.View style={styles.loadingSpinner} />
                                 ) : (
-                                    <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.8)" />
+                                    <Ionicons name="chevron-forward" size={20} color="#ffffff" />
                                 )}
                             </View>
                         </View>
@@ -356,19 +423,47 @@ export default function HomeScreen() {
         );
     };
 
-    // Enhanced Tab Button
+    const StatCard = ({ number, label, color }: any) => {
+        const statAnim = useRef(new Animated.Value(0)).current;
+
+        useEffect(() => {
+            Animated.timing(statAnim, {
+                toValue: 1,
+                duration: 1000,
+                delay: Math.random() * 500,
+                easing: Easing.out(Easing.cubic),
+                useNativeDriver: true,
+            }).start();
+        }, []);
+
+        return (
+            <Animated.View
+                style={[
+                    styles.statCard,
+                    {
+                        opacity: statAnim,
+                        transform: [{
+                            translateY: statAnim.interpolate({
+                                inputRange: [0, 1],
+                                outputRange: [20, 0]
+                            })
+                        }]
+                    }
+                ]}
+            >
+                <Text style={[styles.statNumber, { color }]}>{number}</Text>
+                <Text style={styles.statLabel}>{label}</Text>
+            </Animated.View>
+        );
+    };
+
     const TabButton = ({ iconName, label, isActive, onPress }: any) => {
         const tabScale = useRef(new Animated.Value(1)).current;
-        const tabGlow = useRef(new Animated.Value(0)).current;
 
         const handlePress = () => {
-            if (Platform.OS === 'ios') {
-                Vibration.vibrate(1);
-            }
-
             Animated.sequence([
                 Animated.timing(tabScale, {
-                    toValue: 0.95,
+                    toValue: 0.9,
                     duration: 100,
                     useNativeDriver: true,
                 }),
@@ -378,16 +473,6 @@ export default function HomeScreen() {
                     useNativeDriver: true,
                 })
             ]).start();
-
-            // Enhanced glow effect for active tab
-            if (isActive) {
-                Animated.timing(tabGlow, {
-                    toValue: 1,
-                    duration: 200,
-                    useNativeDriver: true,
-                }).start();
-            }
-
             onPress();
         };
 
@@ -396,69 +481,38 @@ export default function HomeScreen() {
                 <TouchableOpacity
                     style={styles.tabButtonInner}
                     onPress={handlePress}
-                    activeOpacity={0.8}
+                    activeOpacity={0.7}
                 >
-                    <Animated.View style={[
-                        styles.tabIconContainer,
-                        isActive && {
-                            transform: [{ scale: pulseAnim }]
-                        }
-                    ]}>
-                        <Ionicons
-                            name={iconName}
-                            size={24}
-                            color={isActive ? '#ffffff' : 'rgba(255,255,255,0.6)'}
-                        />
-                    </Animated.View>
-                    <Text style={[styles.tabLabel, { color: isActive ? '#ffffff' : 'rgba(255,255,255,0.6)' }]}>
+                    <Ionicons
+                        name={iconName}
+                        size={26}
+                        color={isActive ? '#10b981' : '#9ca3af'}
+                    />
+                    <Text style={[styles.tabLabel, { color: isActive ? '#10b981' : '#9ca3af' }]}>
                         {label}
                     </Text>
-                    {isActive && (
-                        <Animated.View style={[
-                            styles.activeIndicator,
-                            { transform: [{ scale: pulseAnim }] }
-                        ]} />
-                    )}
+                    {isActive && <View style={styles.activeIndicator} />}
                 </TouchableOpacity>
             </Animated.View>
         );
     };
 
-    // Enhanced Profile Option Item
+    // Profile Option Item Component
     const ProfileOptionItem = ({ iconName, title, subtitle, onPress, gradientColors }: any) => {
         const optionScale = useRef(new Animated.Value(1)).current;
-        const optionGlow = useRef(new Animated.Value(0)).current;
 
         const handlePressIn = () => {
-            if (Platform.OS === 'ios') {
-                Vibration.vibrate(1);
-            }
-
-            Animated.parallel([
-                Animated.spring(optionScale, {
-                    toValue: 0.98,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(optionGlow, {
-                    toValue: 1,
-                    duration: 150,
-                    useNativeDriver: true,
-                })
-            ]).start();
+            Animated.spring(optionScale, {
+                toValue: 0.97,
+                useNativeDriver: true,
+            }).start();
         };
 
         const handlePressOut = () => {
-            Animated.parallel([
-                Animated.spring(optionScale, {
-                    toValue: 1,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(optionGlow, {
-                    toValue: 0,
-                    duration: 150,
-                    useNativeDriver: true,
-                })
-            ]).start();
+            Animated.spring(optionScale, {
+                toValue: 1,
+                useNativeDriver: true,
+            }).start();
         };
 
         return (
@@ -478,14 +532,14 @@ export default function HomeScreen() {
                     >
                         <View style={styles.profileOptionContent}>
                             <View style={styles.profileOptionIcon}>
-                                <Ionicons name={iconName} size={20} color="#ffffff" />
+                                <Ionicons name={iconName} size={24} color="#ffffff" />
                             </View>
                             <View style={styles.profileOptionText}>
                                 <Text style={styles.profileOptionTitle}>{title}</Text>
                                 <Text style={styles.profileOptionSubtitle}>{subtitle}</Text>
                             </View>
                             <View style={styles.profileOptionArrow}>
-                                <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.8)" />
+                                <Ionicons name="chevron-forward" size={20} color="#ffffff" />
                             </View>
                         </View>
                     </LinearGradient>
@@ -495,6 +549,7 @@ export default function HomeScreen() {
     };
 
     const renderMainContent = () => {
+
         return (
             <ScrollView
                 style={styles.scrollView}
@@ -502,62 +557,92 @@ export default function HomeScreen() {
                 showsVerticalScrollIndicator={false}
                 bounces={true}
             >
-                {/* Enhanced Header */}
+                {/* Header */}
                 <Animated.View
                     style={[
                         styles.header,
-                        {
-                            opacity: headerAnim,
-                            transform: [{ translateY: slideAnim }],
-                        }
-                    ]}
-                >
-                    <BlurView intensity={15} style={styles.headerBlur}>
-                        <LinearGradient
-                            colors={['rgba(255,255,255,0.15)', 'rgba(255,255,255,0.05)']}
-                            style={styles.headerGradient}
-                        >
-                            <View style={styles.headerLeft}>
-                                <Text style={styles.greeting}>{getGreeting()}</Text>
-                                <Text style={styles.userName}>{user?.name || 'User'} 👋</Text>
-                            </View>
-                            <TouchableOpacity
-                                style={styles.profileButton}
-                                onPress={handleProfilePress}
-                                activeOpacity={0.8}
-                            >
-                                <BlurView intensity={20} style={styles.profileButtonBlur}>
-                                    <Ionicons name="person" size={20} color="#ffffff" />
-                                </BlurView>
-                            </TouchableOpacity>
-                        </LinearGradient>
-                    </BlurView>
-                </Animated.View>
-
-                {/* Enhanced Hero Section */}
-                <Animated.View
-                    style={[
-                        styles.heroSection,
                         {
                             opacity: fadeAnim,
                             transform: [{ translateY: slideAnim }]
                         }
                     ]}
                 >
-                    <Text style={styles.heroTitle}>Discover & Connect</Text>
-                    <Text style={styles.heroSubtitle}>
-                        Find meaningful connections with advanced compatibility matching
-                    </Text>
+                    <View style={styles.headerLeft}>
+                        <Text style={styles.greeting}>{getGreeting()}</Text>
+                        <TouchableOpacity>
+                            <Text style={styles.userName}>{user?.name} 👋</Text>
+                        </TouchableOpacity>
+                        <Text style={styles.timeText}>
+                            {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </Text>
+                    </View>
+                    <TouchableOpacity
+                        style={styles.profileButton}
+                        onPress={() => navigation.navigate('profileUpdate')}
+                    >
+                        <LinearGradient
+                            colors={['#667eea', '#764ba2']}
+                            style={styles.profileGradient}
+                        >
+                            <Ionicons name="person" size={24} color="#ffffff" />
+                        </LinearGradient>
+                    </TouchableOpacity>
                 </Animated.View>
 
-                {/* Enhanced Main Feature Card */}
-                <BeautifulFeatureCard
-                    onPress={() => navigation.navigate('Preference', { mode: 'detailed' })}
-                    loading={isLoading}
-                />
+                {/* Stats Section */}
+                <Animated.View
+                    style={[
+                        styles.statsContainer,
+                        {
+                            opacity: fadeAnim,
+                            transform: [{ translateY: slideAnim }]
+                        }
+                    ]}
+                >
 
-                {/* Bottom Spacing */}
-                <View style={[styles.bottomSpacing, { height: 120 + insets.bottom }]} />
+                </Animated.View>
+
+                {/* Main Features */}
+                <View style={styles.featuresContainer}>
+                    <Text style={styles.sectionTitle}>Discover & Connect</Text>
+
+                    <FeatureCard
+                        title="Quick Match"
+                        subtitle="Start matching instantly with our smart algorithm"
+                        iconName="flash"
+                        gradientColors={['#ff6b6b', '#feca57', '#ff9ff3']}
+                        onPress={handleQuickMatch}
+                        loading={isLoading}
+                        featured={true}
+                    />
+
+                    <FeatureCard
+                        title="Deep Match"
+                        subtitle="Upload 5 photos for complete compatibility analysis"
+                        iconName="heart"
+                        gradientColors={['#667eea', '#764ba2']}
+                        onPress={() => navigation.navigate('Preference', { mode: 'detailed' })}
+                    />
+
+                    <FeatureCard
+                        title="My Conversations"
+                        subtitle="Continue your exciting conversations"
+                        iconName="chatbubbles"
+                        gradientColors={['#4facfe', '#00f2fe']}
+                        onPress={() => navigation.navigate('ChatList')}
+                    />
+
+                    <FeatureCard
+                        title="Generate Card"
+                        subtitle="Get your personal Card"
+                        iconName="chatbubbles"
+                        gradientColors={['#4facfe', '#00f2fe']}
+                        onPress={() => navigation.navigate('Gcard')}
+                    />
+                </View>
+
+                {/* Bottom Spacing for tab bar */}
+                <View style={styles.bottomSpacing} />
             </ScrollView>
         );
     };
@@ -567,49 +652,52 @@ export default function HomeScreen() {
             case 0:
                 return renderMainContent();
             case 1:
-                return <ChatListTabView />;
+                return (
+                    <View style={styles.tabContent}>
+                        <Text style={styles.tabContentTitle}>Matches</Text>
+                        <Text style={styles.tabContentSubtitle}>Your potential matches will appear here</Text>
+                    </View>
+                );
             case 2:
-                return <ChatListTabView />;
+                return (
+                    <ChatListScreen />
+                );
             case 3:
                 return (
                     <ScrollView
                         style={styles.profileScrollView}
-                        contentContainerStyle={[
-                            styles.profileScrollContent,
-                            { paddingBottom: 120 + insets.bottom }
-                        ]}
+                        contentContainerStyle={styles.profileScrollContent}
                         showsVerticalScrollIndicator={false}
                     >
                         <View style={styles.profileTabContent}>
-                            {/* Enhanced Profile Header */}
-                            <View style={styles.profileHeader}>
-                                <BlurView intensity={15} style={styles.profileHeaderBlur}>
+                            {/* Profile Header */}
+
+
+                            <View style={styles.profileAvatarContainer}>
+                                {user?.photo ? (
+                                    <Image
+                                        source={{ uri: user?.photo ?? 'default.png' }}
+                                        style={styles.profileImage}
+                                        resizeMode="cover"
+                                    />
+                                ) : (
                                     <LinearGradient
-                                        colors={['rgba(255,255,255,0.15)', 'rgba(255,255,255,0.05)']}
-                                        style={styles.profileHeaderGradient}
+                                        colors={['#667eea', '#764ba2']}
+                                        style={styles.profileAvatar}
                                     >
-                                        {user?.photo ? (
-                                            <Image
-                                                source={{ uri: user?.photo ?? 'default.png' }}
-                                                style={styles.profileImage}
-                                                resizeMode="cover"
-                                            />
-                                        ) : (
-                                            <View style={styles.profileAvatar}>
-                                                <Ionicons name="person" size={32} color="rgba(255,255,255,0.8)" />
-                                            </View>
-                                        )}
-                                        <Text style={styles.profileName}>{user?.name ?? 'Anonymous'}</Text>
+                                        <Ionicons name="person" size={40} color="#ffffff" />
                                     </LinearGradient>
-                                </BlurView>
+                                )}
+                                <Text style={styles.profileName}>{user?.name ?? 'Anonymous'}</Text>
                             </View>
 
-                            {/* Enhanced Profile Options */}
+
+                            {/* Profile Options */}
                             <View style={styles.profileOptionsContainer}>
                                 <ProfileOptionItem
                                     iconName="person-outline"
                                     title="Personal Information"
-                                    subtitle="Manage your details"
+                                    subtitle="Manage your personal details"
                                     gradientColors={['#4facfe', '#00f2fe']}
                                     onPress={() => navigation.navigate('profileUpdate')}
                                 />
@@ -617,7 +705,7 @@ export default function HomeScreen() {
                                 <ProfileOptionItem
                                     iconName="settings-outline"
                                     title="Settings"
-                                    subtitle="App preferences"
+                                    subtitle="App preferences and configurations"
                                     gradientColors={['#667eea', '#764ba2']}
                                     onPress={() => navigation.navigate('Settings')}
                                 />
@@ -625,25 +713,23 @@ export default function HomeScreen() {
                                 <ProfileOptionItem
                                     iconName="wallet-outline"
                                     title="Cold Wallet"
-                                    subtitle="Secure storage"
+                                    subtitle="Secure cryptocurrency storage"
                                     gradientColors={['#f093fb', '#f5576c']}
-                                    onPress={() => navigation.navigate('Web3Wallet')}
+                                    onPress={() => navigation.navigate('ColdWallet')}
                                 />
 
-                                {/* Enhanced Logout Button */}
-                                <TouchableOpacity 
-                                    style={styles.logoutButton} 
-                                    onPress={handleLogout}
-                                    activeOpacity={0.8}
-                                >
-                                    <LinearGradient
-                                        colors={['#ff6b6b', '#ee5a52']}
-                                        style={styles.logoutGradient}
-                                    >
-                                        <Ionicons name="log-out-outline" size={18} color="#ffffff" />
-                                        <Text style={styles.logoutButtonText}>Logout</Text>
-                                    </LinearGradient>
-                                </TouchableOpacity>
+                                {/* Logout Button */}
+                                <View style={styles.logoutSection}>
+                                    <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+                                        <LinearGradient
+                                            colors={['#ff6b6b', '#ee5a52']}
+                                            style={styles.logoutGradient}
+                                        >
+                                            <Ionicons name="log-out-outline" size={20} color="#ffffff" />
+                                            <Text style={styles.logoutButtonText}>Logout</Text>
+                                        </LinearGradient>
+                                    </TouchableOpacity>
+                                </View>
                             </View>
                         </View>
                     </ScrollView>
@@ -655,75 +741,40 @@ export default function HomeScreen() {
 
     return (
         <View style={styles.container}>
-            <StatusBar
-                barStyle="light-content"
-                backgroundColor="transparent"
-                translucent={false}
-                hidden={false}
-            />
+            <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
 
-            <SafeAreaView style={styles.safeContainer}>
-                {/* Enhanced background gradient */}
-                <LinearGradient
-                    colors={['#1a1f3a', '#2d4a9c', '#4c63d2', '#7c3aed', '#ec4899']}
-                    style={[
-                        styles.backgroundGradient,
-                        { bottom: 90 + (insets.bottom > 0 ? insets.bottom : 0) }
-                    ]}
+            {/* Main Content */}
+            <View style={styles.mainContent}>
+                {renderTabContent()}
+            </View>
+
+            {/* Bottom Tab Bar */}
+            <View style={styles.tabBar}>
+                <TabButton
+                    iconName="home"
+                    label="Home"
+                    isActive={activeTab === 0}
+                    onPress={() => setActiveTab(0)}
                 />
-
-                <View style={styles.mainContent}>
-                    {renderTabContent()}
-                </View>
-
-                {/* Enhanced Tab Bar */}
-                <Animated.View style={[
-                    styles.tabBar,
-                    {
-                        opacity: tabBarAnim,
-                        transform: [{ translateY: tabBarAnim.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: [50, 0]
-                        }) }],
-                        paddingBottom: insets.bottom > 0 ? insets.bottom : 20,
-                        height: 90 + (insets.bottom > 0 ? insets.bottom : 0),
-                    }
-                ]}>
-                    <BlurView intensity={30} style={styles.tabBarBlur}>
-                        <LinearGradient
-                            colors={['rgba(26, 31, 58, 0.8)', 'rgba(45, 53, 97, 0.8)']}
-                            style={styles.tabBarGradient}
-                        >
-                            <View style={styles.tabBarContent}>
-                                <TabButton
-                                    iconName="home"
-                                    label="Home"
-                                    isActive={activeTab === 0}
-                                    onPress={() => setActiveTab(0)}
-                                />
-                                <TabButton
-                                    iconName="heart"
-                                    label="Matches"
-                                    isActive={activeTab === 1}
-                                    onPress={() => setActiveTab(1)}
-                                />
-                                <TabButton
-                                    iconName="chatbubbles"
-                                    label="Messages"
-                                    isActive={activeTab === 2}
-                                    onPress={() => setActiveTab(2)}
-                                />
-                                <TabButton
-                                    iconName="person"
-                                    label="Profile"
-                                    isActive={activeTab === 3}
-                                    onPress={() => setActiveTab(3)}
-                                />
-                            </View>
-                        </LinearGradient>
-                    </BlurView>
-                </Animated.View>
-            </SafeAreaView>
+                <TabButton
+                    iconName="heart"
+                    label="Matches"
+                    isActive={activeTab === 1}
+                    onPress={() => setActiveTab(1)}
+                />
+                <TabButton
+                    iconName="chatbubbles"
+                    label="Messages"
+                    isActive={activeTab === 2}
+                    onPress={() => setActiveTab(2)}
+                />
+                <TabButton
+                    iconName="person"
+                    label="Profile"
+                    isActive={activeTab === 3}
+                    onPress={() => setActiveTab(3)}
+                />
+            </View>
         </View>
     );
 }
@@ -731,123 +782,147 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#1a1f3a',
-    },
-    safeContainer: {
-        flex: 1,
-    },
-    backgroundGradient: {
-        position: 'absolute',
-        left: 0,
-        right: 0,
-        top: 0,
+        backgroundColor: '#f8fafc',
     },
     mainContent: {
         flex: 1,
+        paddingBottom: 120, // More space for larger bottom tab bar
     },
-
-    // Enhanced Header styles
     header: {
-        marginHorizontal: 20,
-        marginTop: 20,
-        marginBottom: 32,
-        borderRadius: 16,
-        overflow: 'hidden',
-    },
-    headerBlur: {
-        borderRadius: 16,
-        overflow: 'hidden',
-    },
-    headerGradient: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingVertical: 16,
+        alignItems: 'flex-start',
+        paddingHorizontal: 24,
+        paddingTop: 20,
+        paddingBottom: 20,
+        backgroundColor: '#ffffff',
+        marginBottom: 16,
     },
     headerLeft: {
         flex: 1,
     },
     greeting: {
-        fontSize: 14,
-        color: 'rgba(255,255,255,0.7)',
-        marginBottom: 2,
+        fontSize: 16,
+        color: '#6b7280',
+        marginBottom: 4,
         fontWeight: '500',
     },
     userName: {
-        fontSize: 24,
-        fontWeight: '700',
-        color: '#ffffff',
+        fontSize: 28,
+        fontWeight: 'bold',
+        color: '#1f2937',
+        marginBottom: 4,
+    },
+    timeText: {
+        fontSize: 14,
+        color: '#9ca3af',
+        fontWeight: '500',
     },
     profileButton: {
-        borderRadius: 20,
+        borderRadius: 25,
         overflow: 'hidden',
+        shadowColor: '#667eea',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        elevation: 3,
     },
-    profileButtonBlur: {
-        width: 40,
-        height: 40,
+    profileGradient: {
+        width: 50,
+        height: 50,
         justifyContent: 'center',
         alignItems: 'center',
     },
-
-    // Enhanced Scroll view
     scrollView: {
         flex: 1,
     },
     scrollContent: {
-        paddingHorizontal: 20,
+        paddingHorizontal: 24,
         paddingBottom: 20,
     },
-
-    // Enhanced Hero section
-    heroSection: {
-        marginBottom: 40,
+    statsContainer: {
+        marginBottom: 24,
+    },
+    statsRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+    },
+    statCard: {
+        flex: 1,
+        backgroundColor: '#ffffff',
+        borderRadius: 16,
+        padding: 16,
+        marginHorizontal: 4,
         alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        elevation: 3,
     },
-    heroTitle: {
-        fontSize: 28,
-        fontWeight: '700',
-        color: '#ffffff',
-        textAlign: 'center',
-        marginBottom: 8,
-        letterSpacing: -0.5,
+    statNumber: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        marginBottom: 4,
     },
-    heroSubtitle: {
-        fontSize: 16,
-        color: 'rgba(255,255,255,0.7)',
-        textAlign: 'center',
-        lineHeight: 22,
-        fontWeight: '400',
-        paddingHorizontal: 20,
+    statLabel: {
+        fontSize: 12,
+        color: '#6b7280',
+        fontWeight: '500',
     },
-
-    // Enhanced Beautiful card styles
-    cardWrapper: {
-        marginBottom: 20,
-        alignItems: 'center',
+    sectionTitle: {
+        fontSize: 22,
+        fontWeight: 'bold',
+        color: '#1f2937',
+        marginBottom: 16,
+        letterSpacing: 0.5,
     },
-    cardGlow: {
-        position: 'absolute',
-        top: -8,
-        left: -8,
-        right: -8,
-        bottom: -8,
-        borderRadius: 24,
-        backgroundColor: 'rgba(240, 147, 251, 0.4)',
+    featuresContainer: {
+        marginBottom: 32,
+    },
+    cardContainer: {
+        marginBottom: 16,
+    },
+    featuredCard: {
+        shadowColor: '#ff6b6b',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.25,
+        shadowRadius: 20,
+        elevation: 10,
     },
     card: {
-        borderRadius: 16,
+        borderRadius: 20,
         overflow: 'hidden',
-        width: width - 40,
-        shadowColor: '#f093fb',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.3,
-        shadowRadius: 16,
-        elevation: 10,
+    },
+    featuredCardInner: {
+        borderRadius: 24,
     },
     cardGradient: {
         padding: 20,
         position: 'relative',
+    },
+    featuredGradient: {
+        padding: 24,
+    },
+    featuredBadge: {
+        position: 'absolute',
+        top: 12,
+        right: 12,
+        backgroundColor: 'rgba(255,255,255,0.95)',
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 14,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    featuredBadgeText: {
+        fontSize: 10,
+        fontWeight: 'bold',
+        color: '#ff6b6b',
+        letterSpacing: 0.5,
     },
     sparkleOverlay: {
         position: 'absolute',
@@ -855,241 +930,287 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(255,255,255,0.15)',
-        borderRadius: 16,
-    },
-    featuredBadge: {
-        position: 'absolute',
-        top: 12,
-        right: 12,
-        backgroundColor: 'rgba(255,215,0,0.9)',
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 8,
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    featuredText: {
-        fontSize: 10,
-        fontWeight: '600',
-        color: '#1a1f3a',
-        letterSpacing: 0.5,
+        backgroundColor: 'rgba(255,255,255,0.1)',
+        borderRadius: 24,
     },
     cardContent: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginTop: 8,
     },
-    iconContainer: {
-        marginRight: 16,
-    },
-    iconBackground: {
-        width: 48,
-        height: 48,
-        borderRadius: 24,
+    cardIcon: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        backgroundColor: 'rgba(255,255,255,0.25)',
         justifyContent: 'center',
         alignItems: 'center',
+        marginRight: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 2,
     },
-    textContent: {
+    featuredIcon: {
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        backgroundColor: 'rgba(255,255,255,0.3)',
+    },
+    cardText: {
         flex: 1,
-        paddingRight: 12,
     },
     cardTitle: {
         fontSize: 20,
-        fontWeight: '700',
+        fontWeight: 'bold',
         color: '#ffffff',
         marginBottom: 4,
     },
+    featuredTitle: {
+        fontSize: 22,
+    },
     cardSubtitle: {
         fontSize: 14,
-        color: 'rgba(255,255,255,0.8)',
-        lineHeight: 18,
-        fontWeight: '400',
+        color: 'rgba(255,255,255,0.85)',
+        lineHeight: 20,
     },
-    arrowContainer: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        backgroundColor: 'rgba(255,255,255,0.15)',
+    featuredSubtitle: {
+        fontSize: 15,
+        lineHeight: 22,
+        color: 'rgba(255,255,255,0.9)',
+    },
+    cardArrow: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        backgroundColor: 'rgba(255,255,255,0.25)',
         justifyContent: 'center',
         alignItems: 'center',
     },
     loadingSpinner: {
-        width: 16,
-        height: 16,
-        borderRadius: 8,
+        width: 20,
+        height: 20,
+        borderRadius: 10,
         borderWidth: 2,
         borderColor: '#ffffff',
         borderTopColor: 'transparent',
     },
-
     bottomSpacing: {
-        height: 120,
+        height: 140, // More space for larger bottom tab bar
     },
-
-    // Enhanced Tab bar styles
+    // Tab Bar Styles
     tabBar: {
+        flexDirection: 'row',
+        backgroundColor: '#ffffff',
+        paddingVertical: 16,
+        paddingHorizontal: 0,
+        paddingBottom: 30,
+        borderTopWidth: 1,
+        borderTopColor: '#e5e7eb',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 8,
         position: 'absolute',
         bottom: 0,
         left: 0,
         right: 0,
-        borderTopWidth: 0,
-        overflow: 'hidden',
-    },
-    tabBarBlur: {
-        flex: 1,
-        borderRadius: 20,
-        marginHorizontal: 20,
-        marginBottom: 10,
-        overflow: 'hidden',
-    },
-    tabBarGradient: {
-        flex: 1,
-    },
-    tabBarContent: {
-        flexDirection: 'row',
-        paddingHorizontal: 20,
-        paddingTop: 12,
-        paddingBottom: 8,
+        height: 90,
+        width: '100%', // Ensure full width
     },
     tabButton: {
         flex: 1,
         alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 0,
+        position: 'relative',
+        minHeight: 60,
+        width: '25%',
     },
     tabButtonInner: {
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: 8,
+        width: '100%',
+        height: '100%',
         position: 'relative',
     },
-    tabIconContainer: {
-        marginBottom: 4,
-    },
     tabLabel: {
-        fontSize: 12,
-        fontWeight: '500',
-        marginTop: 4,
-        textAlign: 'center',
+        fontSize: 13,
+        fontWeight: '600',
+        marginTop: 6,
     },
     activeIndicator: {
         position: 'absolute',
-        top: -12,
-        width: 4,
-        height: 4,
-        borderRadius: 2,
-        backgroundColor: '#ffffff',
+        top: -16,
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: '#10b981',
     },
-
-    // Enhanced Profile styles
+    // Tab Content Styles
+    tabContent: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 24,
+    },
+    tabContentTitle: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: '#1f2937',
+        marginBottom: 8,
+    },
+    tabContentSubtitle: {
+        fontSize: 16,
+        color: '#6b7280',
+        textAlign: 'center',
+        marginBottom: 32,
+    },
+    // Profile Tab Styles
     profileScrollView: {
         flex: 1,
+        backgroundColor: '#f8fafc',
     },
     profileScrollContent: {
-        paddingHorizontal: 20,
-        paddingTop: 20,
+        paddingBottom: 140,
     },
     profileTabContent: {
         flex: 1,
+        paddingHorizontal: 24,
+        paddingTop: 20,
     },
     profileHeader: {
-        marginBottom: 32,
-        borderRadius: 16,
-        overflow: 'hidden',
-    },
-    profileHeaderBlur: {
-        borderRadius: 16,
-        overflow: 'hidden',
-    },
-    profileHeaderGradient: {
         alignItems: 'center',
         paddingVertical: 32,
-        paddingHorizontal: 20,
+        backgroundColor: '#ffffff',
+        borderRadius: 20,
+        marginBottom: 24,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        elevation: 3,
+    },
+    profileAvatarContainer: {
+        alignItems: 'center',
+        borderRadius: 40,
+        overflow: 'hidden',
+        marginBottom: 16,
+        shadowColor: '#667eea',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 5,
     },
     profileAvatar: {
         width: 80,
         height: 80,
-        borderRadius: 40,
-        backgroundColor: 'rgba(255,255,255,0.15)',
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 12,
-    },
-    profileImage: {
-        width: 80,
-        height: 80,
-        borderRadius: 40,
-        marginBottom: 12,
     },
     profileName: {
-        fontSize: 24,
-        fontWeight: '700',
-        color: '#ffffff',
-        textAlign: 'center',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: 34,
+        fontWeight: 'bold',
+        color: '#1f2937',
+        marginBottom: 4,
+    },
+    profileEmail: {
+        fontSize: 16,
+        color: '#6b7280',
+        fontWeight: '500',
     },
     profileOptionsContainer: {
-        gap: 12,
+        flex: 1,
     },
     profileOptionContainer: {
-        marginBottom: 0,
+        marginBottom: 16,
     },
     profileOption: {
-        borderRadius: 12,
+        borderRadius: 16,
         overflow: 'hidden',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        elevation: 3,
     },
     profileOptionGradient: {
-        padding: 16,
+        padding: 20,
     },
     profileOptionContent: {
         flexDirection: 'row',
         alignItems: 'center',
     },
     profileOptionIcon: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        backgroundColor: 'rgba(255,255,255,0.2)',
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        backgroundColor: 'rgba(255,255,255,0.25)',
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 12,
+        marginRight: 16,
     },
     profileOptionText: {
         flex: 1,
     },
+    profileImage: {
+        width: 150,
+        height: 150,
+        borderRadius: 50,
+        borderWidth: 2,
+        borderColor: '#fff',
+        marginBottom: 10, // 与名字之间留点空隙
+    },
     profileOptionTitle: {
-        fontSize: 16,
-        fontWeight: '600',
+        fontSize: 18,
+        fontWeight: 'bold',
         color: '#ffffff',
-        marginBottom: 2,
+        marginBottom: 4,
     },
     profileOptionSubtitle: {
-        fontSize: 13,
-        color: 'rgba(255,255,255,0.7)',
+        fontSize: 14,
+        color: 'rgba(255,255,255,0.85)',
+        lineHeight: 18,
     },
     profileOptionArrow: {
-        width: 28,
-        height: 28,
-        borderRadius: 14,
-        backgroundColor: 'rgba(255,255,255,0.15)',
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: 'rgba(255,255,255,0.25)',
         justifyContent: 'center',
         alignItems: 'center',
     },
-    logoutButton: {
-        borderRadius: 12,
-        overflow: 'hidden',
-        marginTop: 20,
+    logoutSection: {
+        marginTop: 32,
+        alignItems: 'center',
     },
-
+    logoutButton: {
+        borderRadius: 16,
+        overflow: 'hidden',
+        shadowColor: '#ff6b6b',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 4,
+        minWidth: 200,
+    },
     logoutGradient: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        paddingHorizontal: 24,
-        paddingVertical: 12,
+        paddingHorizontal: 32,
+        paddingVertical: 16,
     },
     logoutButtonText: {
         color: '#ffffff',
-        fontSize: 14,
-        fontWeight: '600',
-        marginLeft: 6,
+        fontSize: 16,
+        fontWeight: 'bold',
+        marginLeft: 8,
     },
+
+
 });

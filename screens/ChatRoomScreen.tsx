@@ -23,7 +23,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { io } from 'socket.io-client';
 
-// 🚀 类型定义
+// 🚀 Type definitions
 interface Partner {
     name: string;
     photo: string;
@@ -49,7 +49,7 @@ interface Message {
     reactions?: { emoji: string; count: number }[];
 }
 
-// 🚀 去中心化聊天服务 Mock
+// 🚀 Decentralized chat service Mock
 const useDecentralizedChat = () => {
     const [isDecentralizedMode, setIsDecentralizedMode] = useState(false);
     const [isInitializing, setIsInitializing] = useState(false);
@@ -110,13 +110,18 @@ export default function InstagramChatRoom() {
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const slideAnim = useRef(new Animated.Value(height)).current;
 
+    // 🆕 Swipe to decentralized mode animations
+    const swipeAnim = useRef(new Animated.Value(0)).current;
+    const decentralizedModeAnim = useRef(new Animated.Value(0)).current;
+    const particleAnims = useRef(Array.from({ length: 15 }, () => new Animated.Value(0))).current;
+
     React.useLayoutEffect(() => {
         navigation.setOptions({
             headerShown: false,
         });
     }, [navigation]);
 
-    // 入场动画
+    // Entry animation
     useEffect(() => {
         Animated.parallel([
             Animated.timing(fadeAnim, {
@@ -155,7 +160,134 @@ export default function InstagramChatRoom() {
 
     const flatListRef = useRef<FlatList>(null);
 
-    // 分离 userId 初始化和消息加载
+    // 🆕 Swipe gesture handler for decentralized mode
+    const swipePanResponder = PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onStartShouldSetPanResponderCapture: () => false,
+        onMoveShouldSetPanResponder: (_, gestureState) => {
+            return Math.abs(gestureState.dy) > 10 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx);
+        },
+        onMoveShouldSetPanResponderCapture: () => false,
+
+        onPanResponderGrant: () => {
+            swipeAnim.setValue(0);
+        },
+
+        onPanResponderMove: (_, gestureState) => {
+            // Only respond to upward swipes
+            if (gestureState.dy < 0) {
+                const progress = Math.min(Math.abs(gestureState.dy) / 150, 1);
+                swipeAnim.setValue(progress);
+            }
+        },
+
+        onPanResponderRelease: (_, gestureState) => {
+            const swipeThreshold = -120; // Pixels to swipe up
+
+            if (gestureState.dy < swipeThreshold && gestureState.vy < -0.5) {
+                // Trigger decentralized mode
+                Animated.timing(swipeAnim, {
+                    toValue: 1,
+                    duration: 300,
+                    useNativeDriver: false,
+                }).start(() => {
+                    toggleDecentralizedMode();
+                });
+            } else {
+                // Reset animation
+                Animated.timing(swipeAnim, {
+                    toValue: 0,
+                    duration: 200,
+                    useNativeDriver: false,
+                }).start();
+            }
+        },
+    });
+
+    // 🆕 Toggle decentralized mode with animations
+    const toggleDecentralizedMode = async () => {
+        if (!isDecentralizedMode) {
+            //try {
+                // Start particle animation
+                createParticleEffect();
+
+                // Enable decentralized mode
+                await enableDecentralizedMode();
+
+                // Animate background transition
+                Animated.timing(decentralizedModeAnim, {
+                    toValue: 1,
+                    duration: 800,
+                    useNativeDriver: false,
+                }).start();
+
+                // Haptic feedback
+                if (Platform.OS === 'ios') {
+                    const { HapticFeedback } = require('expo-haptics');
+                    HapticFeedback.impactAsync(HapticFeedback.ImpactFeedbackStyle.Medium);
+                }
+
+                // Show success message
+                setTimeout(() => {
+                    Alert.alert(
+                        '🔗 Decentralized Mode Activated',
+                        'Your messages are now secured on the blockchain!',
+                        [{ text: 'Got it!', style: 'default' }]
+                    );
+                }, 500);
+
+           /* } catch (error) {
+                console.error('Failed to enable decentralized mode:', error);
+                Alert.alert('Error', 'Failed to connect to blockchain. Please try again.');
+            }*/
+        } else {
+            // Disable decentralized mode
+            Alert.alert(
+                '🔄 Switch to Traditional Chat',
+                'Switch back to standard messaging?',
+                [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                        text: 'Switch',
+                        onPress: () => {
+                            setIsDecentralizedMode(false);
+                            Animated.timing(decentralizedModeAnim, {
+                                toValue: 0,
+                                duration: 600,
+                                useNativeDriver: false,
+                            }).start();
+                            setMessages([]);
+                        }
+                    }
+                ]
+            );
+        }
+
+        // Reset swipe animation
+        swipeAnim.setValue(0);
+    };
+
+    // 🆕 Create particle effect for mode transition
+    const createParticleEffect = () => {
+        const animations = particleAnims.map((anim, index) => {
+            anim.setValue(0);
+            return Animated.sequence([
+                Animated.delay(index * 50),
+                Animated.timing(anim, {
+                    toValue: 1,
+                    duration: 2000,
+                    useNativeDriver: true,
+                })
+            ]);
+        });
+
+        Animated.parallel(animations).start(() => {
+            // Reset particles
+            particleAnims.forEach(anim => anim.setValue(0));
+        });
+    };
+
+    // Separate userId initialization and message loading
     useEffect(() => {
         const initUserId = async () => {
             const id = await SecureStore.getItemAsync('user_id');
@@ -164,9 +296,9 @@ export default function InstagramChatRoom() {
         initUserId();
     }, []);
 
-    // 只有在 userId 准备好后才加载消息
+    // Only load messages after userId is ready
     useEffect(() => {
-        if (userId === null) return; // 等待 userId 初始化
+        if (userId === null) return; // Wait for userId initialization
 
         const loadMessages = async () => {
             if (isDecentralizedMode) {
@@ -208,14 +340,14 @@ export default function InstagramChatRoom() {
 
             const data = await res.json();
 
-            // 添加调试日志
+            // Add debug logs
             console.log('API Response:', data);
             console.log('Messages array:', data.messages);
 
-            // 确保消息格式正确
+            // Ensure message format is correct
             const formattedMessages = (data.messages || []).map((msg: any) => ({
                 sender_id: msg.sender_id,
-                message: msg.message || msg.content, // 兼容不同字段名
+                message: msg.message || msg.content, // Compatible with different field names
                 timestamp: msg.timestamp,
                 reactions: msg.reactions || []
             }));
@@ -340,44 +472,6 @@ export default function InstagramChatRoom() {
         }
     };
 
-    const handleDecentralizedChat = async () => {
-        if (isDecentralizedMode) {
-            Alert.alert(
-                '🔄 Switch to Traditional Chat',
-                'Switch back to standard messaging?',
-                [
-                    { text: 'Cancel', style: 'cancel' },
-                    {
-                        text: 'Switch',
-                        onPress: () => {
-                            setIsDecentralizedMode(false);
-                            setMessages([]);
-                        }
-                    }
-                ]
-            );
-        } else {
-            Alert.alert(
-                '🔗 Enable Blockchain Chat',
-                'Your messages will be permanently stored on the blockchain.',
-                [
-                    { text: 'Cancel', style: 'cancel' },
-                    {
-                        text: 'Enable',
-                        onPress: async () => {
-                            try {
-                                await enableDecentralizedMode();
-                                setMessages([]);
-                            } catch (error) {
-                                console.error('Failed to enable decentralized mode:', error);
-                            }
-                        }
-                    }
-                ]
-            );
-        }
-    };
-
     const addReaction = (messageIndex: number, emoji: string) => {
         setMessages(prev => prev.map((msg, index) => {
             if (index === messageIndex) {
@@ -429,7 +523,7 @@ export default function InstagramChatRoom() {
             nextMessage.sender_id !== item.sender_id ||
             (new Date(nextMessage.timestamp).getTime() - new Date(item.timestamp).getTime()) > 300000;
 
-        // 长按手势
+        // Long press gesture
         const panResponder = PanResponder.create({
             onStartShouldSetPanResponder: () => false,
             onStartShouldSetPanResponderCapture: () => false,
@@ -520,7 +614,7 @@ export default function InstagramChatRoom() {
                                 </View>
                             )}
 
-                            {/* Instagram风格反应 */}
+                            {/* Instagram-style reactions */}
                             {item.reactions && item.reactions.length > 0 && (
                                 <View style={styles.reactionsContainer}>
                                     {item.reactions.map((reaction, idx) => (
@@ -547,7 +641,7 @@ export default function InstagramChatRoom() {
         );
     };
 
-    // 添加调试信息
+    // Add debug info
     useEffect(() => {
         console.log('Messages state updated:', messages);
         console.log('Messages count:', messages.length);
@@ -559,99 +653,140 @@ export default function InstagramChatRoom() {
         console.log('Partner:', partner);
     }, []);
 
+    // 🆕 Dynamic background based on mode
+    const backgroundInterpolation = decentralizedModeAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: ['#f8fafc', '#0f172a']
+    });
+
     return (
-        <View style={styles.container}>
+        <View style={styles.container} {...swipePanResponder.panHandlers}>
             <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
-            {/* 浅色主题Header */}
-            <LinearGradient
-                colors={['#ffffff', '#f8fafc', '#f1f5f9']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.header}
-            >
-                <BlurView intensity={20} tint="light" style={StyleSheet.absoluteFill} />
+            {/* 🆕 Animated Background */}
+            <Animated.View
+                style={[
+                    StyleSheet.absoluteFill,
+                    { backgroundColor: backgroundInterpolation }
+                ]}
+            />
 
-                <TouchableOpacity
-                    style={styles.backButton}
-                    onPress={() => navigation.goBack()}
+            {/* 🆕 Particle Effects */}
+            {particleAnims.map((anim, index) => (
+                <Animated.View
+                    key={index}
+                    style={[
+                        styles.particle,
+                        {
+                            left: Math.random() * width,
+                            top: Math.random() * height,
+                            opacity: anim,
+                            transform: [
+                                {
+                                    translateY: anim.interpolate({
+                                        inputRange: [0, 1],
+                                        outputRange: [0, -100]
+                                    })
+                                },
+                                {
+                                    scale: anim.interpolate({
+                                        inputRange: [0, 0.5, 1],
+                                        outputRange: [0, 1.2, 0]
+                                    })
+                                }
+                            ]
+                        }
+                    ]}
+                />
+            ))}
+
+
+
+            {/* Header with dynamic styling */}
+            <Animated.View style={styles.headerWrapper}>
+                <LinearGradient
+                    colors={isDecentralizedMode ?
+                        ['rgba(15, 23, 42, 0.95)', 'rgba(30, 41, 59, 0.9)', 'rgba(51, 65, 85, 0.85)'] :
+                        ['#ffffff', '#f8fafc', '#f1f5f9']
+                    }
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.header}
                 >
-                    <Ionicons name="chevron-back" size={26} color="#1f2937" />
-                </TouchableOpacity>
+                    <BlurView intensity={20} tint={isDecentralizedMode ? "dark" : "light"} style={StyleSheet.absoluteFill} />
 
-                <View style={styles.headerContent}>
-                    <View style={styles.partnerInfo}>
-                        {partner.photo ? (
-                            <View style={styles.headerAvatarWrapper}>
-                                <Image source={{ uri: partner.photo }} style={styles.headerAvatar} />
-                                {partner.story && <View style={styles.headerStoryRing} />}
-                                {partner.isVerified && (
-                                    <View style={styles.headerVerificationBadge}>
-                                        <Ionicons name="checkmark" size={10} color="#ffffff" />
-                                    </View>
-                                )}
-                            </View>
-                        ) : (
-                            <LinearGradient
-                                colors={['#667eea', '#764ba2']}
-                                style={styles.headerAvatarPlaceholder}
-                            >
-                                <Text style={styles.headerAvatarInitials}>{getInitials(partner.name)}</Text>
-                            </LinearGradient>
-                        )}
+                    <TouchableOpacity
+                        style={styles.backButton}
+                        onPress={() => navigation.goBack()}
+                    >
+                        <Ionicons name="chevron-back" size={26} color={isDecentralizedMode ? "#ffffff" : "#1f2937"} />
+                    </TouchableOpacity>
 
-                        <View style={styles.partnerDetails}>
-                            <View style={styles.nameRow}>
-                                <Text style={styles.partnerName}>{partner.name}</Text>
-                                {partner.isVerified && (
-                                    <Ionicons name="checkmark-circle" size={16} color="#1d9bf0" style={styles.verifiedIcon} />
-                                )}
-                            </View>
+                    <View style={styles.headerContent}>
+                        <View style={styles.partnerInfo}>
+                            {partner.photo ? (
+                                <View style={styles.headerAvatarWrapper}>
+                                    <Image source={{ uri: partner.photo }} style={styles.headerAvatar} />
+                                    {partner.story && <View style={styles.headerStoryRing} />}
+                                    {partner.isVerified && (
+                                        <View style={styles.headerVerificationBadge}>
+                                            <Ionicons name="checkmark" size={10} color="#ffffff" />
+                                        </View>
+                                    )}
+                                </View>
+                            ) : (
+                                <LinearGradient
+                                    colors={isDecentralizedMode ? ['#10b981', '#059669'] : ['#667eea', '#764ba2']}
+                                    style={styles.headerAvatarPlaceholder}
+                                >
+                                    <Text style={styles.headerAvatarInitials}>{getInitials(partner.name)}</Text>
+                                </LinearGradient>
+                            )}
 
-                            <View style={styles.statusContainer}>
-                                <View style={[
-                                    styles.statusDot,
-                                    isPartnerOnline ? styles.onlineStatus : styles.offlineStatus
-                                ]} />
-                                <Text style={styles.statusText}>
-                                    {isPartnerOnline ? 'Active now' : 'Offline'}
-                                </Text>
+                            <View style={styles.partnerDetails}>
+                                <View style={styles.nameRow}>
+                                    <Text style={[
+                                        styles.partnerName,
+                                        { color: isDecentralizedMode ? "#ffffff" : "#1f2937" }
+                                    ]}>
+                                        {partner.name}
+                                    </Text>
+                                    {partner.isVerified && (
+                                        <Ionicons name="checkmark-circle" size={16} color="#1d9bf0" style={styles.verifiedIcon} />
+                                    )}
+                                </View>
+
+                                <View style={styles.statusContainer}>
+                                    <View style={[
+                                        styles.statusDot,
+                                        isDecentralizedMode ? styles.decentralizedStatus :
+                                            isPartnerOnline ? styles.onlineStatus : styles.offlineStatus
+                                    ]} />
+                                    <Text style={[
+                                        styles.statusText,
+                                        { color: isDecentralizedMode ? "rgba(255,255,255,0.8)" : "rgba(31, 41, 55, 0.7)" }
+                                    ]}>
+                                        {isDecentralizedMode ? 'Blockchain secured' :
+                                            isPartnerOnline ? 'Active now' : 'Offline'}
+                                    </Text>
+                                </View>
                             </View>
                         </View>
                     </View>
-                </View>
 
-                <View style={styles.headerActions}>
-                    <TouchableOpacity
-                        style={[
-                            styles.actionButton,
-                            isDecentralizedMode && styles.activeActionButton
-                        ]}
-                        onPress={handleDecentralizedChat}
-                        disabled={isInitializing}
-                    >
-                        {isInitializing ? (
-                            <ActivityIndicator size="small" color="#1f2937" />
-                        ) : (
-                            <Ionicons
-                                name={isDecentralizedMode ? "shield-checkmark" : "planet"}
-                                size={22}
-                                color="#1f2937"
-                            />
-                        )}
-                    </TouchableOpacity>
+                    <View style={styles.headerActions}>
+                        <TouchableOpacity style={styles.actionButton}>
+                            <Ionicons name="videocam" size={22} color={isDecentralizedMode ? "#ffffff" : "#1f2937"} />
+                        </TouchableOpacity>
 
-                    <TouchableOpacity style={styles.actionButton}>
-                        <Ionicons name="videocam" size={22} color="#1f2937" />
-                    </TouchableOpacity>
+                        <TouchableOpacity style={styles.actionButton}>
+                            <Ionicons name="call" size={20} color={isDecentralizedMode ? "#ffffff" : "#1f2937"} />
+                        </TouchableOpacity>
+                    </View>
+                </LinearGradient>
+            </Animated.View>
 
-                    <TouchableOpacity style={styles.actionButton}>
-                        <Ionicons name="call" size={20} color="#1f2937" />
-                    </TouchableOpacity>
-                </View>
-            </LinearGradient>
-
-            {/* 聊天内容区域 */}
+            {/* Chat content area */}
             <KeyboardAvoidingView
                 style={styles.chatContainer}
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -675,23 +810,39 @@ export default function InstagramChatRoom() {
                     />
                 </Animated.View>
 
-                {/* 浅色主题输入区域 */}
-                <BlurView intensity={95} tint="light" style={styles.inputContainer}>
+                {/* Input area with dynamic styling */}
+                <BlurView
+                    intensity={95}
+                    tint={isDecentralizedMode ? "dark" : "light"}
+                    style={[
+                        styles.inputContainer,
+                        { backgroundColor: isDecentralizedMode ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255,255,255,0.95)' }
+                    ]}
+                >
                     <View style={styles.inputWrapper}>
                         <TouchableOpacity style={styles.cameraButton}>
                             <LinearGradient
-                                colors={['#667eea', '#764ba2']}
+                                colors={isDecentralizedMode ? ['#10b981', '#059669'] : ['#667eea', '#764ba2']}
                                 style={styles.cameraButtonGradient}
                             >
                                 <Ionicons name="camera" size={20} color="#ffffff" />
                             </LinearGradient>
                         </TouchableOpacity>
 
-                        <View style={styles.inputBar}>
+                        <View style={[
+                            styles.inputBar,
+                            {
+                                backgroundColor: isDecentralizedMode ? 'rgba(30, 41, 59, 0.8)' : '#f1f5f9',
+                                borderColor: isDecentralizedMode ? 'rgba(16, 185, 129, 0.3)' : 'rgba(31, 41, 55, 0.1)'
+                            }
+                        ]}>
                             <TextInput
-                                style={styles.input}
+                                style={[
+                                    styles.input,
+                                    { color: isDecentralizedMode ? '#ffffff' : '#1f2937' }
+                                ]}
                                 placeholder="Message..."
-                                placeholderTextColor="rgba(107, 114, 128, 0.6)"
+                                placeholderTextColor={isDecentralizedMode ? "rgba(255,255,255,0.6)" : "rgba(107, 114, 128, 0.6)"}
                                 value={text}
                                 onChangeText={handleTextChange}
                                 multiline
@@ -714,14 +865,18 @@ export default function InstagramChatRoom() {
                             </TouchableOpacity>
                         ) : (
                             <TouchableOpacity style={styles.voiceButton}>
-                                <Ionicons name="mic" size={20} color="#667eea" />
+                                <Ionicons
+                                    name="mic"
+                                    size={20}
+                                    color={isDecentralizedMode ? "#10b981" : "#667eea"}
+                                />
                             </TouchableOpacity>
                         )}
                     </View>
                 </BlurView>
             </KeyboardAvoidingView>
 
-            {/* 反应选择器 */}
+            {/* Reaction selector */}
             {showReactions && (
                 <TouchableOpacity
                     style={styles.reactionOverlay}
@@ -753,6 +908,22 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#f8fafc',
+    },
+
+    particle: {
+        position: 'absolute',
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: '#10b981',
+        shadowColor: '#10b981',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.8,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    headerWrapper: {
+        zIndex: 5,
     },
     header: {
         flexDirection: 'row',
@@ -838,7 +1009,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     partnerName: {
-        color: '#1f2937',
         fontSize: 18,
         fontWeight: 'bold',
         textShadowColor: 'rgba(255,255,255,0.8)',
@@ -870,14 +1040,13 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(107, 114, 128, 0.6)',
     },
     decentralizedStatus: {
-        backgroundColor: '#3b82f6',
-        shadowColor: '#3b82f6',
+        backgroundColor: '#10b981',
+        shadowColor: '#10b981',
         shadowOffset: { width: 0, height: 0 },
         shadowOpacity: 0.8,
         shadowRadius: 3,
     },
     statusText: {
-        color: 'rgba(31, 41, 55, 0.7)',
         fontSize: 13,
         fontWeight: '500',
     },
@@ -903,18 +1072,15 @@ const styles = StyleSheet.create({
     },
     chatContainer: {
         flex: 1,
-        backgroundColor: '#f8fafc',
     },
     messagesContainer: {
         flex: 1,
-        backgroundColor: '#f8fafc',
     },
     messagesList: {
         paddingHorizontal: 16,
         paddingTop: 20,
         paddingBottom: 20,
         flexGrow: 1,
-        backgroundColor: '#f8fafc',
     },
     messageWrapper: {
         marginBottom: 12,
@@ -1082,7 +1248,6 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     inputContainer: {
-        backgroundColor: 'rgba(255,255,255,0.95)',
         borderTopWidth: 1,
         borderTopColor: 'rgba(31, 41, 55, 0.1)',
         paddingHorizontal: 16,
@@ -1108,10 +1273,8 @@ const styles = StyleSheet.create({
         flex: 1,
         flexDirection: 'row',
         alignItems: 'flex-end',
-        backgroundColor: '#f1f5f9',
         borderRadius: 20,
         borderWidth: 1,
-        borderColor: 'rgba(31, 41, 55, 0.1)',
         paddingHorizontal: 4,
         paddingVertical: 4,
         minHeight: 40,
@@ -1122,7 +1285,6 @@ const styles = StyleSheet.create({
         paddingVertical: 8,
         paddingHorizontal: 12,
         fontSize: 16,
-        color: '#1f2937',
         lineHeight: 20,
         maxHeight: 80,
     },
