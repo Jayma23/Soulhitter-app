@@ -12,8 +12,8 @@ import {
     Platform,
     Vibration,
     Easing,
-    SafeAreaView
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import * as SecureStore from 'expo-secure-store';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -24,35 +24,18 @@ import { useUser } from './UserContext';
 import { Image } from 'react-native';
 import ChatListScreen from "@/screens/ChatListScreen";
 
-
 export default function HomeScreen() {
     const navigation = useNavigation<any>();
     const [isLoading, setIsLoading] = useState(false);
-    //const [userName, setUserName] = useState('User');
     const [currentTime, setCurrentTime] = useState(new Date());
     const [activeTab, setActiveTab] = useState(0);
-    //const [userPhoto, setUserPhoto] = useState<string | null>(null);
     const { user } = useUser();
-
-
 
     // Animation values
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const slideAnim = useRef(new Animated.Value(30)).current;
     const pulseAnim = useRef(new Animated.Value(1)).current;
     const sparkleAnim = useRef(new Animated.Value(0)).current;
-
-    /*useEffect(() => {
-        const loadUserInfo = async () => {
-            const name = await SecureStore.getItemAsync('name1');
-            const photo = await SecureStore.getItemAsync('photo');
-            if (name) setUserName(name);
-            if (photo) setUserPhoto(photo);
-        };
-
-        loadUserInfo();
-    }, []);
-    */
 
     console.log(user?.photo)
     console.log(user?.name)
@@ -65,7 +48,6 @@ export default function HomeScreen() {
         }
         return true;
     };
-    //console.log(userName)
 
     const uploadToCloudinary = async (uri: string) => {
         const data = new FormData();
@@ -252,7 +234,6 @@ export default function HomeScreen() {
     };
 
     const handleLogout = async () => {
-
         Alert.alert(
             'Logout',
             'Are you sure you want to logout?',
@@ -265,9 +246,6 @@ export default function HomeScreen() {
                         try {
                             await SecureStore.deleteItemAsync('user_id');
                             await SecureStore.deleteItemAsync('token');
-                            //setUserName('');
-                            //setUserPhoto('');
-
 
                             navigation.reset({
                                 index: 0,
@@ -549,7 +527,6 @@ export default function HomeScreen() {
     };
 
     const renderMainContent = () => {
-
         return (
             <ScrollView
                 style={styles.scrollView}
@@ -599,46 +576,135 @@ export default function HomeScreen() {
                         }
                     ]}
                 >
-
                 </Animated.View>
 
                 {/* Main Features */}
                 <View style={styles.featuresContainer}>
-                    <Text style={styles.sectionTitle}>Discover & Connect</Text>
+                    <Text style={styles.sectionTitle}>Find Your Match</Text>
 
-                    <FeatureCard
-                        title="Quick Match"
-                        subtitle="Start matching instantly with our smart algorithm"
-                        iconName="flash"
-                        gradientColors={['#ff6b6b', '#feca57', '#ff9ff3']}
-                        onPress={handleQuickMatch}
-                        loading={isLoading}
-                        featured={true}
-                    />
+                    {/* Circular Deep Match Button */}
+                    <View style={styles.circularMatchContainer}>
+                        <Animated.View
+                            style={[
+                                styles.circularMatchWrapper,
+                                {
+                                    opacity: fadeAnim,
+                                    transform: [
+                                        { translateY: slideAnim },
+                                        { scale: pulseAnim }
+                                    ]
+                                }
+                            ]}
+                        >
+                            <TouchableOpacity
+                                style={styles.circularMatchButton}
+                                onPress={() => navigation.navigate('Preference', { mode: 'detailed' })}
+                                activeOpacity={0.9}
+                            >
+                                <LinearGradient
+                                    colors={['#667eea', '#764ba2', '#f093fb']}
+                                    style={styles.circularGradient}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 1 }}
+                                >
+                                    {/* Animated sparkle overlay */}
+                                    <Animated.View
+                                        style={[
+                                            styles.circularSparkle,
+                                            { opacity: sparkleAnim }
+                                        ]}
+                                    />
 
-                    <FeatureCard
-                        title="Deep Match"
-                        subtitle="Upload 5 photos for complete compatibility analysis"
-                        iconName="heart"
-                        gradientColors={['#667eea', '#764ba2']}
-                        onPress={() => navigation.navigate('Preference', { mode: 'detailed' })}
-                    />
+                                    {/* Heart icon */}
+                                    <View style={styles.circularIconContainer}>
+                                        <Ionicons name="heart" size={48} color="#ffffff" />
+                                    </View>
 
-                    <FeatureCard
-                        title="My Conversations"
-                        subtitle="Continue your exciting conversations"
-                        iconName="chatbubbles"
-                        gradientColors={['#4facfe', '#00f2fe']}
-                        onPress={() => navigation.navigate('ChatList')}
-                    />
+                                    {/* Text content */}
+                                    <View style={styles.circularTextContainer}>
+                                        <Text style={styles.circularTitle}>Deep Match</Text>
+                                        <Text style={styles.circularSubtitle}>
+                                            Start your journey to find meaningful connections
+                                        </Text>
+                                    </View>
 
-                    <FeatureCard
-                        title="Generate Card"
-                        subtitle="Get your personal Card"
-                        iconName="chatbubbles"
-                        gradientColors={['#4facfe', '#00f2fe']}
-                        onPress={() => navigation.navigate('Gcard')}
-                    />
+                                    {/* Floating hearts animation */}
+                                    <View style={styles.floatingHeart1}>
+                                        <Animated.View
+                                            style={{
+                                                transform: [{
+                                                    translateY: sparkleAnim.interpolate({
+                                                        inputRange: [0, 1],
+                                                        outputRange: [0, -20]
+                                                    })
+                                                }],
+                                                opacity: sparkleAnim
+                                            }}
+                                        >
+                                            <Text style={styles.floatingHeartText}>💖</Text>
+                                        </Animated.View>
+                                    </View>
+
+                                    <View style={styles.floatingHeart2}>
+                                        <Animated.View
+                                            style={{
+                                                transform: [{
+                                                    translateY: sparkleAnim.interpolate({
+                                                        inputRange: [0, 1],
+                                                        outputRange: [0, -15]
+                                                    })
+                                                }],
+                                                opacity: sparkleAnim.interpolate({
+                                                    inputRange: [0, 0.5, 1],
+                                                    outputRange: [0, 1, 0]
+                                                })
+                                            }}
+                                        >
+                                            <Text style={styles.floatingHeartText}>✨</Text>
+                                        </Animated.View>
+                                    </View>
+
+                                    <View style={styles.floatingHeart3}>
+                                        <Animated.View
+                                            style={{
+                                                transform: [{
+                                                    translateY: sparkleAnim.interpolate({
+                                                        inputRange: [0, 1],
+                                                        outputRange: [0, -25]
+                                                    })
+                                                }],
+                                                opacity: sparkleAnim.interpolate({
+                                                    inputRange: [0, 0.3, 0.7, 1],
+                                                    outputRange: [0, 1, 1, 0]
+                                                })
+                                            }}
+                                        >
+                                            <Text style={styles.floatingHeartText}>💕</Text>
+                                        </Animated.View>
+                                    </View>
+                                </LinearGradient>
+                            </TouchableOpacity>
+                        </Animated.View>
+
+                        {/* Ripple effect */}
+                        <Animated.View
+                            style={[
+                                styles.rippleEffect,
+                                {
+                                    opacity: sparkleAnim.interpolate({
+                                        inputRange: [0, 1],
+                                        outputRange: [0.3, 0]
+                                    }),
+                                    transform: [{
+                                        scale: sparkleAnim.interpolate({
+                                            inputRange: [0, 1],
+                                            outputRange: [1, 1.3]
+                                        })
+                                    }]
+                                }
+                            ]}
+                        />
+                    </View>
                 </View>
 
                 {/* Bottom Spacing for tab bar */}
@@ -671,8 +737,6 @@ export default function HomeScreen() {
                     >
                         <View style={styles.profileTabContent}>
                             {/* Profile Header */}
-
-
                             <View style={styles.profileAvatarContainer}>
                                 {user?.photo ? (
                                     <Image
@@ -690,7 +754,6 @@ export default function HomeScreen() {
                                 )}
                                 <Text style={styles.profileName}>{user?.name ?? 'Anonymous'}</Text>
                             </View>
-
 
                             {/* Profile Options */}
                             <View style={styles.profileOptionsContainer}>
@@ -740,7 +803,7 @@ export default function HomeScreen() {
     };
 
     return (
-        <View style={styles.container}>
+        <SafeAreaView style={styles.container}>
             <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
 
             {/* Main Content */}
@@ -775,7 +838,7 @@ export default function HomeScreen() {
                     onPress={() => setActiveTab(3)}
                 />
             </View>
-        </View>
+        </SafeAreaView>
     );
 }
 
@@ -786,14 +849,14 @@ const styles = StyleSheet.create({
     },
     mainContent: {
         flex: 1,
-        paddingBottom: 120, // More space for larger bottom tab bar
+        paddingBottom: 90, // 减少底部padding，匹配tabBar高度
     },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
         paddingHorizontal: 24,
-        paddingTop: 20,
+        paddingTop: 10, // 减少顶部padding
         paddingBottom: 20,
         backgroundColor: '#ffffff',
         marginBottom: 16,
@@ -874,11 +937,103 @@ const styles = StyleSheet.create({
         fontSize: 22,
         fontWeight: 'bold',
         color: '#1f2937',
-        marginBottom: 16,
+        marginBottom: 32, // 增加间距
         letterSpacing: 0.5,
+        textAlign: 'center', // 居中标题
     },
     featuresContainer: {
         marginBottom: 32,
+        alignItems: 'center', // 居中容器
+    },
+    // Circular Match Button Styles
+    circularMatchContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        position: 'relative',
+        marginTop: 20,
+    },
+    circularMatchWrapper: {
+        position: 'relative',
+    },
+    circularMatchButton: {
+        width: 280,
+        height: 280,
+        borderRadius: 140,
+        overflow: 'hidden',
+        shadowColor: '#667eea',
+        shadowOffset: { width: 0, height: 12 },
+        shadowOpacity: 0.3,
+        shadowRadius: 20,
+        elevation: 15,
+    },
+    circularGradient: {
+        width: '100%',
+        height: '100%',
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 24,
+        position: 'relative',
+    },
+    circularSparkle: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+        borderRadius: 140,
+    },
+    circularIconContainer: {
+        marginBottom: 16,
+        padding: 16,
+        borderRadius: 50,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    },
+    circularTextContainer: {
+        alignItems: 'center',
+        paddingHorizontal: 20,
+    },
+    circularTitle: {
+        fontSize: 28,
+        fontWeight: 'bold',
+        color: '#ffffff',
+        marginBottom: 8,
+        textAlign: 'center',
+    },
+    circularSubtitle: {
+        fontSize: 16,
+        color: 'rgba(255, 255, 255, 0.9)',
+        textAlign: 'center',
+        lineHeight: 22,
+    },
+    // Floating hearts
+    floatingHeart1: {
+        position: 'absolute',
+        top: 40,
+        right: 50,
+    },
+    floatingHeart2: {
+        position: 'absolute',
+        top: 60,
+        left: 40,
+    },
+    floatingHeart3: {
+        position: 'absolute',
+        bottom: 50,
+        right: 40,
+    },
+    floatingHeartText: {
+        fontSize: 20,
+    },
+    // Ripple effect
+    rippleEffect: {
+        position: 'absolute',
+        width: 300,
+        height: 300,
+        borderRadius: 150,
+        borderWidth: 2,
+        borderColor: '#667eea',
+        backgroundColor: 'transparent',
     },
     cardContainer: {
         marginBottom: 16,
@@ -996,15 +1151,15 @@ const styles = StyleSheet.create({
         borderTopColor: 'transparent',
     },
     bottomSpacing: {
-        height: 140, // More space for larger bottom tab bar
+        height: 20, // 大幅减少底部空白
     },
     // Tab Bar Styles
     tabBar: {
         flexDirection: 'row',
         backgroundColor: '#ffffff',
-        paddingVertical: 16,
+        paddingVertical: 12, // 减少垂直padding
         paddingHorizontal: 0,
-        paddingBottom: 30,
+        paddingBottom: Platform.OS === 'ios' ? 20 : 12, // iOS考虑Home indicator
         borderTopWidth: 1,
         borderTopColor: '#e5e7eb',
         shadowColor: '#000',
@@ -1016,17 +1171,17 @@ const styles = StyleSheet.create({
         bottom: 0,
         left: 0,
         right: 0,
-        height: 90,
-        width: '100%', // Ensure full width
+        height: 90, // 保持固定高度
+        width: '100%',
     },
     tabButton: {
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: 12,
+        paddingVertical: 8, // 减少padding
         paddingHorizontal: 0,
         position: 'relative',
-        minHeight: 60,
+        minHeight: 50, // 减少最小高度
         width: '25%',
     },
     tabButtonInner: {
@@ -1074,7 +1229,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#f8fafc',
     },
     profileScrollContent: {
-        paddingBottom: 140,
+        paddingBottom: 100, // 减少profile页面底部空白
     },
     profileTabContent: {
         flex: 1,
@@ -1211,6 +1366,4 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         marginLeft: 8,
     },
-
-
 });

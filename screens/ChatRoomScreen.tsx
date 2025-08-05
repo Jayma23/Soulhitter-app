@@ -1,26 +1,26 @@
-import React, { useEffect, useState, useRef } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
+import * as SecureStore from 'expo-secure-store';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-    View,
+    ActivityIndicator,
+    Alert,
+    Animated,
+    Dimensions,
+    FlatList,
+    Image,
+    KeyboardAvoidingView,
+    PanResponder,
+    Platform,
+    StatusBar,
+    StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
-    FlatList,
-    StyleSheet,
-    KeyboardAvoidingView,
-    Platform,
-    StatusBar,
-    Image,
-    Dimensions,
-    Alert,
-    ActivityIndicator,
-    Animated,
-    PanResponder
+    View
 } from 'react-native';
-import * as SecureStore from 'expo-secure-store';
-import { useRoute, useNavigation } from '@react-navigation/native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
-import { BlurView } from 'expo-blur';
 import { io } from 'socket.io-client';
 
 // 🚀 Type definitions
@@ -69,10 +69,33 @@ const useDecentralizedChat = () => {
         }
     };
 
-    const sendDecentralizedMessage = async (recipientAddress: string, message: string) => {
-        console.log('🚀 Sending to blockchain:', { recipientAddress, message });
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        return { success: true, txHash: '0x123...', blockNumber: 12345 };
+    const sendDecentralizedMessage = async (chatId: string, senderId: number, message: string) => {
+        try {
+            console.log('🔗 Sending decentralized message:', { chatId, sender_id: senderId, content: message });
+
+            const res = await fetch('https://ccbackendx-2.onrender.com/chatroom/send-message-b', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    chat_id: chatId,
+                    sender_id: senderId,
+                    content: message
+                })
+            });
+
+            if (!res.ok) {
+                throw new Error(`HTTP error! status: ${res.status}`);
+            }
+
+            const data = await res.json();
+            console.log('🔗 Decentralized message sent successfully:', data);
+            return { success: true, data };
+        } catch (error) {
+            console.error('❌ Error sending decentralized message:', error);
+            throw error;
+        }
     };
 
     const getDecentralizedHistory = async (otherUserAddress: string) => {
@@ -315,15 +338,38 @@ export default function InstagramChatRoom() {
 
     const loadDecentralizedMessages = async () => {
         try {
-            if (!partner.wallet_address) return;
-            const decentralizedMessages = await getDecentralizedHistory(partner.wallet_address);
-            const formattedMessages: Message[] = decentralizedMessages.map((msg: any) => ({
-                ...msg,
-                sender_id: msg.sender_id === userAddress?.toLowerCase() ? userId : 999,
+            console.log('🔗 Loading decentralized messages for chatId:', chatId);
+            const res = await fetch(`https://ccbackendx-2.onrender.com/chatroom/messages-b/${chatId}`);
+
+            if (!res.ok) {
+                throw new Error(`HTTP error! status: ${res.status}`);
+            }
+
+            const data = await res.json();
+            console.log('🔗 Decentralized messages response:', data);
+
+            const formattedMessages: Message[] = (data.messages || []).map((msg: any) => ({
+                sender_id: msg.sender_id,
+                message: msg.message,
+                timestamp: msg.timestamp,
+                isDecentralized: true,
+                reactions: msg.reactions || []
             }));
+
             setMessages(formattedMessages);
         } catch (error) {
             console.error('❌ Error loading decentralized messages:', error);
+            // Fallback to mock data if API fails
+            const mockMessages: Message[] = [
+                {
+                    sender_id: 999,
+                    message: "Hello from blockchain! 🔗✨",
+                    timestamp: new Date(Date.now() - 60000).toISOString(),
+                    isDecentralized: true,
+                    reactions: [{ emoji: '🔥', count: 2 }]
+                }
+            ];
+            setMessages(mockMessages);
         }
     };
 
@@ -448,7 +494,7 @@ export default function InstagramChatRoom() {
 
         try {
             if (isDecentralizedMode) {
-                await sendDecentralizedMessage(partner.wallet_address || '', text.trim());
+                await sendDecentralizedMessage(chatId, userId || 0, text.trim());
             } else {
                 socket.current.emit('send_message', {
                     chat_id: chatId,
