@@ -23,6 +23,7 @@ const { width, height } = Dimensions.get('window');
 import { useUser } from './UserContext';
 import { Image } from 'react-native';
 import ChatListScreen from "@/screens/ChatListScreen";
+import Matched from "@/screens/Matched";
 
 export default function HomeScreen() {
     const navigation = useNavigation<any>();
@@ -582,129 +583,41 @@ export default function HomeScreen() {
                 <View style={styles.featuresContainer}>
                     <Text style={styles.sectionTitle}>Find Your Match</Text>
 
-                    {/* Circular Deep Match Button */}
-                    <View style={styles.circularMatchContainer}>
-                        <Animated.View
-                            style={[
-                                styles.circularMatchWrapper,
-                                {
-                                    opacity: fadeAnim,
-                                    transform: [
-                                        { translateY: slideAnim },
-                                        { scale: pulseAnim }
-                                    ]
-                                }
-                            ]}
+                    {/* Simple Circular Deep Match Button */}
+                    <TouchableOpacity
+                        style={styles.simpleCircularButton}
+                        onPress={() => {
+                            console.log('Button pressed - navigating to Preference');
+                            navigation.navigate('Preference', { mode: 'detailed' });
+                        }}
+                        activeOpacity={0.8}
+                    >
+                        <LinearGradient
+                            colors={['#667eea', '#764ba2', '#f093fb']}
+                            style={styles.simpleCircularGradient}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
                         >
-                            <TouchableOpacity
-                                style={styles.circularMatchButton}
-                                onPress={() => navigation.navigate('Preference', { mode: 'detailed' })}
-                                activeOpacity={0.9}
-                            >
-                                <LinearGradient
-                                    colors={['#667eea', '#764ba2', '#f093fb']}
-                                    style={styles.circularGradient}
-                                    start={{ x: 0, y: 0 }}
-                                    end={{ x: 1, y: 1 }}
-                                >
-                                    {/* Animated sparkle overlay */}
-                                    <Animated.View
-                                        style={[
-                                            styles.circularSparkle,
-                                            { opacity: sparkleAnim }
-                                        ]}
-                                    />
+                            {/* Simple animated background */}
+                            <Animated.View
+                                style={[
+                                    styles.simpleSparkle,
+                                    { opacity: sparkleAnim }
+                                ]}
+                            />
 
-                                    {/* Heart icon */}
-                                    <View style={styles.circularIconContainer}>
-                                        <Ionicons name="heart" size={48} color="#ffffff" />
-                                    </View>
+                            {/* Heart icon */}
+                            <View style={styles.simpleIconContainer}>
+                                <Ionicons name="heart" size={48} color="#ffffff" />
+                            </View>
 
-                                    {/* Text content */}
-                                    <View style={styles.circularTextContainer}>
-                                        <Text style={styles.circularTitle}>Deep Match</Text>
-                                        <Text style={styles.circularSubtitle}>
-                                            Start your journey to find meaningful connections
-                                        </Text>
-                                    </View>
-
-                                    {/* Floating hearts animation */}
-                                    <View style={styles.floatingHeart1}>
-                                        <Animated.View
-                                            style={{
-                                                transform: [{
-                                                    translateY: sparkleAnim.interpolate({
-                                                        inputRange: [0, 1],
-                                                        outputRange: [0, -20]
-                                                    })
-                                                }],
-                                                opacity: sparkleAnim
-                                            }}
-                                        >
-                                            <Text style={styles.floatingHeartText}>💖</Text>
-                                        </Animated.View>
-                                    </View>
-
-                                    <View style={styles.floatingHeart2}>
-                                        <Animated.View
-                                            style={{
-                                                transform: [{
-                                                    translateY: sparkleAnim.interpolate({
-                                                        inputRange: [0, 1],
-                                                        outputRange: [0, -15]
-                                                    })
-                                                }],
-                                                opacity: sparkleAnim.interpolate({
-                                                    inputRange: [0, 0.5, 1],
-                                                    outputRange: [0, 1, 0]
-                                                })
-                                            }}
-                                        >
-                                            <Text style={styles.floatingHeartText}>✨</Text>
-                                        </Animated.View>
-                                    </View>
-
-                                    <View style={styles.floatingHeart3}>
-                                        <Animated.View
-                                            style={{
-                                                transform: [{
-                                                    translateY: sparkleAnim.interpolate({
-                                                        inputRange: [0, 1],
-                                                        outputRange: [0, -25]
-                                                    })
-                                                }],
-                                                opacity: sparkleAnim.interpolate({
-                                                    inputRange: [0, 0.3, 0.7, 1],
-                                                    outputRange: [0, 1, 1, 0]
-                                                })
-                                            }}
-                                        >
-                                            <Text style={styles.floatingHeartText}>💕</Text>
-                                        </Animated.View>
-                                    </View>
-                                </LinearGradient>
-                            </TouchableOpacity>
-                        </Animated.View>
-
-                        {/* Ripple effect */}
-                        <Animated.View
-                            style={[
-                                styles.rippleEffect,
-                                {
-                                    opacity: sparkleAnim.interpolate({
-                                        inputRange: [0, 1],
-                                        outputRange: [0.3, 0]
-                                    }),
-                                    transform: [{
-                                        scale: sparkleAnim.interpolate({
-                                            inputRange: [0, 1],
-                                            outputRange: [1, 1.3]
-                                        })
-                                    }]
-                                }
-                            ]}
-                        />
-                    </View>
+                            {/* Text content */}
+                            <Text style={styles.simpleTitle}>Deep Match</Text>
+                            <Text style={styles.simpleSubtitle}>
+                                Start your journey to find meaningful connections
+                            </Text>
+                        </LinearGradient>
+                    </TouchableOpacity>
                 </View>
 
                 {/* Bottom Spacing for tab bar */}
@@ -719,10 +632,7 @@ export default function HomeScreen() {
                 return renderMainContent();
             case 1:
                 return (
-                    <View style={styles.tabContent}>
-                        <Text style={styles.tabContentTitle}>Matches</Text>
-                        <Text style={styles.tabContentSubtitle}>Your potential matches will appear here</Text>
-                    </View>
+                    <Matched />
                 );
             case 2:
                 return (
@@ -945,17 +855,8 @@ const styles = StyleSheet.create({
         marginBottom: 32,
         alignItems: 'center', // 居中容器
     },
-    // Circular Match Button Styles
-    circularMatchContainer: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        position: 'relative',
-        marginTop: 20,
-    },
-    circularMatchWrapper: {
-        position: 'relative',
-    },
-    circularMatchButton: {
+    // Simple Circular Button Styles (replacing complex version)
+    simpleCircularButton: {
         width: 280,
         height: 280,
         borderRadius: 140,
@@ -965,8 +866,10 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.3,
         shadowRadius: 20,
         elevation: 15,
+        alignSelf: 'center',
+        marginTop: 20,
     },
-    circularGradient: {
+    simpleCircularGradient: {
         width: '100%',
         height: '100%',
         justifyContent: 'center',
@@ -974,7 +877,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 24,
         position: 'relative',
     },
-    circularSparkle: {
+    simpleSparkle: {
         position: 'absolute',
         top: 0,
         left: 0,
@@ -983,57 +886,25 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(255, 255, 255, 0.1)',
         borderRadius: 140,
     },
-    circularIconContainer: {
+    simpleIconContainer: {
         marginBottom: 16,
         padding: 16,
         borderRadius: 50,
         backgroundColor: 'rgba(255, 255, 255, 0.2)',
     },
-    circularTextContainer: {
-        alignItems: 'center',
-        paddingHorizontal: 20,
-    },
-    circularTitle: {
+    simpleTitle: {
         fontSize: 28,
         fontWeight: 'bold',
         color: '#ffffff',
         marginBottom: 8,
         textAlign: 'center',
     },
-    circularSubtitle: {
+    simpleSubtitle: {
         fontSize: 16,
         color: 'rgba(255, 255, 255, 0.9)',
         textAlign: 'center',
         lineHeight: 22,
-    },
-    // Floating hearts
-    floatingHeart1: {
-        position: 'absolute',
-        top: 40,
-        right: 50,
-    },
-    floatingHeart2: {
-        position: 'absolute',
-        top: 60,
-        left: 40,
-    },
-    floatingHeart3: {
-        position: 'absolute',
-        bottom: 50,
-        right: 40,
-    },
-    floatingHeartText: {
-        fontSize: 20,
-    },
-    // Ripple effect
-    rippleEffect: {
-        position: 'absolute',
-        width: 300,
-        height: 300,
-        borderRadius: 150,
-        borderWidth: 2,
-        borderColor: '#667eea',
-        backgroundColor: 'transparent',
+        paddingHorizontal: 20,
     },
     cardContainer: {
         marginBottom: 16,

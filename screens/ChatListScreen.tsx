@@ -17,6 +17,7 @@ import * as SecureStore from 'expo-secure-store';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import HomeScreen from "@/screens/HomeScreen";
 
 const { width } = Dimensions.get('window');
 
@@ -515,9 +516,9 @@ export default function ChatListScreen() {
                 style={styles.headerGradient}
             >
                 <View style={styles.header}>
-                    <TouchableOpacity
+                    {/*<TouchableOpacity
                         style={styles.backButton}
-                        onPress={() => navigation.goBack()}
+                        onPress={() => navigation.goBack(HomeScreen)}
                         activeOpacity={0.7}
                     >
                         <LinearGradient
@@ -526,7 +527,7 @@ export default function ChatListScreen() {
                         >
                             <Ionicons name="chevron-back" size={24} color="#667eea" />
                         </LinearGradient>
-                    </TouchableOpacity>
+                    </TouchableOpacity>*/}
 
                     <View style={styles.headerContent}>
                         <Text style={styles.headerTitle}>Messages</Text>

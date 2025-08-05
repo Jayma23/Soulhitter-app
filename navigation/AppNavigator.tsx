@@ -17,6 +17,7 @@ import SmartReplyKeyboard from '../screens/SmartReplyKeyboard';
 import Preference from '../screens/Preference'
 import Gcard from '../screens/Gcard'
 import Web3Wallet from '../screens/Web3Wallet'
+import Matched from '../screens/Matched'
 export type RootStackParamList = {
     Login: undefined;
     Register: undefined;
@@ -33,6 +34,7 @@ export type RootStackParamList = {
     Gcard: undefined
     ChatListTabView: undefined
     Web3Wallet: undefined
+    Matched: undefined
 
 };
 
@@ -45,6 +47,7 @@ export default function App() {
             <Stack.Screen name="Register" component={RegisterScreen} />
             <Stack.Screen name="ProfileSetup" component={ProfileSetupScreen} />
             <Stack.Screen name="Home" component={HomeScreen} />
+            <Stack.Screen name="Matched" component={Matched} />
 
             <Stack.Screen name="PhotoUpload" component={PhotoUploadScreen} />
             <Stack.Screen name="ChatList" component={ChatListScreen} />
