@@ -1,23 +1,22 @@
 // navigation/AppNavigator.tsx
-import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import LoginScreen from '../screens/LoginScreen';
-import RegisterScreen from '../screens/RegisterScreen';
-import ProfileSetupScreen from '../screens/ProfileSetupScreen';
-import HomeScreen from '../screens/HomeScreen';
-import ChatListScreen from '../screens/ChatListScreen';
-import PhotoUploadScreen from '../screens/PhotoUploadScreen';
-import ChatRoomScreen from '../screens/ChatRoomScreen';
-import WaitingScreen from '../screens/WaitingScreen';
+import React from 'react';
 import Card from '../screens/Card';
-import profileUpdate from '../screens/profileUpdate';
-import Settings from '../screens/Settings';
+import ChatListScreen from '../screens/ChatListScreen';
 import ChatListTabView from '../screens/ChatListTabView';
-import SmartReplyKeyboard from '../screens/SmartReplyKeyboard';
-import Preference from '../screens/Preference'
-import Gcard from '../screens/Gcard'
-import Web3Wallet from '../screens/Web3Wallet'
-import Matched from '../screens/Matched'
+import ChatRoomScreen from '../screens/ChatRoomScreen';
+import Gcard from '../screens/Gcard';
+import HomeScreen from '../screens/HomeScreen';
+import LoginScreen from '../screens/LoginScreen';
+import Matched from '../screens/Matched';
+import PhotoUploadScreen from '../screens/PhotoUploadScreen';
+import Preference from '../screens/Preference';
+import ProfileSetupScreen from '../screens/ProfileSetupScreen';
+import profileUpdate from '../screens/profileUpdate';
+import RegisterScreen from '../screens/RegisterScreen';
+import Settings from '../screens/Settings';
+import WaitingScreen from '../screens/WaitingScreen';
+import Web3Wallet from '../screens/Web3Wallet';
 export type RootStackParamList = {
     Login: undefined;
     Register: undefined;

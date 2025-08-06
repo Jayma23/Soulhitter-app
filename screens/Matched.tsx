@@ -1,24 +1,25 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
+import * as SecureStore from "expo-secure-store";
+import React, { useEffect, useRef, useState } from 'react';
 import {
-    View,
-    Text,
-    StyleSheet,
-    TouchableOpacity,
+    Alert,
     Animated,
     Dimensions,
-    StatusBar,
-    Platform,
-    Alert,
+    Image,
     Modal,
-    ScrollView
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+    ActivityIndicator
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
-import { BlurView } from 'expo-blur';
-import { Image } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
 import { Calendar } from 'react-native-calendars';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width, height } = Dimensions.get('window');
 
@@ -35,10 +36,32 @@ interface RouteParams {
     currentUser: MatchedUser;
 }
 
+interface ChatRoom {
+    chat_id: string;
+}
+
+const API_BASE_URL = 'https://ccbackendx-2.onrender.com';
+
 export default function MatchSuccessScreen() {
     const navigation = useNavigation<any>();
     const route = useRoute();
-    const { matchedUser, currentUser } = route.params as RouteParams;
+
+    // 安全地获取参数，提供默认值
+    const params = route.params as RouteParams | undefined;
+    const matchedUser = params?.matchedUser || {
+        id: 'default_matched',
+        name: 'Sarah',
+        photo: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400',
+        age: 25,
+        location: 'New York'
+    };
+    const currentUser = params?.currentUser || {
+        id: 'default_current',
+        name: 'You',
+        photo: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400',
+        age: 28,
+        location: 'New York'
+    };
 
     // Animation values
     const scaleAnim = useRef(new Animated.Value(0)).current;
@@ -52,6 +75,8 @@ export default function MatchSuccessScreen() {
     const [selectedDate, setSelectedDate] = useState('');
     const [selectedTime, setSelectedTime] = useState('');
     const [showTimeSlots, setShowTimeSlots] = useState(false);
+    const [isCreatingChat, setIsCreatingChat] = useState(false);
+    const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
     // Time slots
     const timeSlots = [
@@ -60,6 +85,18 @@ export default function MatchSuccessScreen() {
     ];
 
     useEffect(() => {
+        // Get current user ID from SecureStore
+        const getCurrentUserId = async () => {
+            try {
+                const userId = await SecureStore.getItemAsync('user_id');
+                setCurrentUserId(userId);
+            } catch (error) {
+                console.error('Error getting user ID:', error);
+            }
+        };
+
+        getCurrentUserId();
+
         // Entrance animations
         Animated.sequence([
             Animated.parallel([
@@ -114,22 +151,133 @@ export default function MatchSuccessScreen() {
         ).start();
     }, []);
 
-    const handleStartChat = async () => {
+    // Enhanced API helper function
+    const makeAPICall = async (endpoint: string, method: string = 'GET', body: any = null): Promise<any> => {
         try {
-            // Create chat room API call here
-            const chatId = `chat_${currentUser.id}_${matchedUser.id}`;
+            const config: RequestInit = {
+                method,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                ...(body && { body: JSON.stringify(body) })
+            };
 
+            const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || `API Error: ${response.status} ${response.statusText}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error(`API Call Error (${endpoint}):`, error);
+            throw error;
+        }
+    };
+
+    // Create or get existing chat room using your backend API
+    const createChatRoom = async (user1Id: string, user2Id: string): Promise<{ chat_id: string }> => {
+        try {
+            // Use your existing API endpoint
+            const response = await makeAPICall('/chatroom/create-or-get-room', 'POST', {
+                user1_id: user1Id,
+                user2_id: user2Id
+            });
+
+            if (response.chat_id) {
+                return { chat_id: response.chat_id };
+            }
+
+            throw new Error('Failed to create or get chat room');
+        } catch (error) {
+            console.error('Error creating chat room:', error);
+            throw error;
+        }
+    };
+
+    // Send initial match message
+    const sendInitialMessage = async (chatRoomId: string, fromUserId: string): Promise<void> => {
+        try {
+            const initialMessage = `Hey ${matchedUser.name}! 👋 We matched! I'm excited to get to know you better. How's your day going? 😊`;
+
+            await makeAPICall('/chat/send-message', 'POST', {
+                chat_room_id: chatRoomId,
+                sender_id: fromUserId,
+                message: initialMessage,
+                message_type: 'text'
+            });
+
+            console.log('Initial message sent successfully');
+        } catch (error) {
+            console.error('Error sending initial message:', error);
+            // Don't throw error here - chat room creation is more important
+        }
+    };
+
+    const handleStartChat = async () => {
+        if (!currentUserId) {
+            Alert.alert('Error', 'Please log in again to start chatting.');
+            return;
+        }
+
+        setIsCreatingChat(true);
+
+        try {
+            console.log('🚀 Creating chat room between:', currentUserId, 'and', matchedUser.id);
+
+            // Create or get existing chat room
+            const chatRoom = await createChatRoom(currentUserId, matchedUser.id);
+            console.log('✅ Chat room created/retrieved:', chatRoom);
+
+            // Send initial message to break the ice
+            await sendInitialMessage(chatRoom.chat_id, currentUserId);
+
+            // Navigate to chat screen with proper parameters
             navigation.navigate('ChatRoom', {
-                chatId: chatId,
+                chatId: chatRoom.chat_id,
+                chatRoomId: chatRoom.chat_id,
                 partner: {
+                    id: matchedUser.id,
                     name: matchedUser.name,
                     photo: matchedUser.photo,
                     user_id: matchedUser.id
+                },
+                currentUser: {
+                    id: currentUserId,
+                    name: currentUser.name,
+                    photo: currentUser.photo
                 }
             });
+
         } catch (error) {
-            console.error('Error creating chat:', error);
-            Alert.alert('Error', 'Failed to start chat. Please try again.');
+            console.error('❌ Error starting chat:', error);
+
+            let errorMessage = 'Failed to start chat. Please try again.';
+            if (error instanceof Error) {
+                if (error.message.includes('network') || error.message.includes('timeout')) {
+                    errorMessage = 'Network error. Please check your connection and try again.';
+                } else if (error.message.includes('auth')) {
+                    errorMessage = 'Authentication error. Please log in again.';
+                }
+            }
+
+            Alert.alert(
+                'Chat Error 💬',
+                errorMessage,
+                [
+                    {
+                        text: 'Try Again',
+                        onPress: () => handleStartChat()
+                    },
+                    {
+                        text: 'Cancel',
+                        style: 'cancel'
+                    }
+                ]
+            );
+        } finally {
+            setIsCreatingChat(false);
         }
     };
 
@@ -148,27 +296,54 @@ export default function MatchSuccessScreen() {
     };
 
     const handleSendDateRequest = async () => {
-        if (!selectedDate || !selectedTime) {
-            Alert.alert('Please select both date and time');
+        if (!selectedDate || !selectedTime || !currentUserId) {
+            Alert.alert('Error', 'Please select both date and time, and make sure you\'re logged in.');
             return;
         }
 
         try {
-            // Send date request API call here
-            const dateRequest = {
-                from: currentUser.id,
-                to: matchedUser.id,
-                date: selectedDate,
-                time: selectedTime,
-                status: 'pending'
-            };
+            // Send date request through chat system
+            const dateRequestMessage = `🌟 Date Request 🌟\n\nI'd love to take you out on ${selectedDate} at ${selectedTime}! \n\nWhat do you think? 💕`;
 
-            console.log('Sending date request:', dateRequest);
+            // First create/get chat room if it doesn't exist
+            const chatRoom = await createChatRoom(currentUserId, matchedUser.id);
+
+            // Send date request as a message
+            await makeAPICall('/chatroom/send-message', 'POST', {
+                chat_id: chatRoom.chat_id,
+                sender_id: currentUserId,
+                content: dateRequestMessage
+            });
 
             Alert.alert(
                 'Date Request Sent! 💕',
                 `Your date request for ${selectedDate} at ${selectedTime} has been sent to ${matchedUser.name}!`,
                 [
+                    {
+                        text: 'View Chat',
+                        onPress: () => {
+                            setShowCalendar(false);
+                            setSelectedDate('');
+                            setSelectedTime('');
+
+                            // Navigate to chat to see the date request
+                            navigation.navigate('ChatRoom', {
+                                chatId: chatRoom.chat_id,
+                                chatRoomId: chatRoom.chat_id,
+                                partner: {
+                                    id: matchedUser.id,
+                                    name: matchedUser.name,
+                                    photo: matchedUser.photo,
+                                    user_id: matchedUser.id
+                                },
+                                currentUser: {
+                                    id: currentUserId,
+                                    name: currentUser.name,
+                                    photo: currentUser.photo
+                                }
+                            });
+                        }
+                    },
                     {
                         text: 'Great!',
                         onPress: () => {
@@ -256,7 +431,7 @@ export default function MatchSuccessScreen() {
                         { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
                     ]}
                 >
-                    <Text style={styles.matchTitle}>It&#39;s a Match!</Text>
+                    <Text style={styles.matchTitle}>It's a Match!</Text>
                     <Text style={styles.matchSubtitle}>You and {matchedUser.name} liked each other</Text>
                 </Animated.View>
 
@@ -305,6 +480,7 @@ export default function MatchSuccessScreen() {
                         style={styles.actionButton}
                         onPress={handleScheduleDate}
                         activeOpacity={0.8}
+                        disabled={isCreatingChat}
                     >
                         <LinearGradient
                             colors={['#667eea', '#764ba2']}
@@ -319,19 +495,28 @@ export default function MatchSuccessScreen() {
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                        style={styles.actionButton}
+                        style={[styles.actionButton, isCreatingChat && styles.disabledButton]}
                         onPress={handleStartChat}
                         activeOpacity={0.8}
+                        disabled={isCreatingChat}
                     >
                         <LinearGradient
-                            colors={['#4facfe', '#00f2fe']}
+                            colors={isCreatingChat ? ['#94a3b8', '#64748b'] : ['#4facfe', '#00f2fe']}
                             style={styles.buttonGradient}
                             start={{ x: 0, y: 0 }}
                             end={{ x: 1, y: 1 }}
                         >
-                            <Ionicons name="chatbubbles" size={28} color="#ffffff" />
-                            <Text style={styles.buttonText}>Start Chatting</Text>
-                            <Text style={styles.buttonSubtext}>Get to know each other</Text>
+                            {isCreatingChat ? (
+                                <ActivityIndicator color="#ffffff" size="small" style={{ marginRight: 8 }} />
+                            ) : (
+                                <Ionicons name="chatbubbles" size={28} color="#ffffff" />
+                            )}
+                            <Text style={styles.buttonText}>
+                                {isCreatingChat ? 'Creating Chat...' : 'Start Chatting'}
+                            </Text>
+                            <Text style={styles.buttonSubtext}>
+                                {isCreatingChat ? 'Please wait...' : 'Get to know each other'}
+                            </Text>
                         </LinearGradient>
                     </TouchableOpacity>
                 </Animated.View>
@@ -341,6 +526,7 @@ export default function MatchSuccessScreen() {
                     <TouchableOpacity
                         style={styles.keepSwipingButton}
                         onPress={() => navigation.goBack()}
+                        disabled={isCreatingChat}
                     >
                         <Text style={styles.keepSwipingText}>Keep Swiping</Text>
                     </TouchableOpacity>
@@ -573,6 +759,9 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.3,
         shadowRadius: 12,
         elevation: 8,
+    },
+    disabledButton: {
+        opacity: 0.7,
     },
     buttonGradient: {
         paddingVertical: 24,
