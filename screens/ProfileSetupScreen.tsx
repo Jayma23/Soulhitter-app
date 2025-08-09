@@ -216,9 +216,15 @@ export default function AIMatchingQuestionnaire() {
             navigation.navigate('Home');
         }
     };
-
+    const scrollViewRef = useRef<ScrollView>(null);
     const nextStep = () => {
         if (currentStep < totalSteps - 1) {
+            // 立即滚动到顶部
+            scrollViewRef.current?.scrollTo({
+                y: 0,
+                animated: false
+            });
+
             // 重置动画
             fadeAnim.setValue(0);
             slideAnim.setValue(50);
@@ -232,6 +238,12 @@ export default function AIMatchingQuestionnaire() {
 
     const previousStep = () => {
         if (currentStep > 0) {
+            // 立即滚动到顶部
+            scrollViewRef.current?.scrollTo({
+                y: 0,
+                animated: false
+            });
+
             // 重置动画
             fadeAnim.setValue(0);
             slideAnim.setValue(50);

@@ -45,22 +45,24 @@ const API_BASE_URL = 'https://ccbackendx-2.onrender.com';
 export default function MatchSuccessScreen() {
     const navigation = useNavigation<any>();
     const route = useRoute();
+    const [currentUserInfo, setCurrentUserInfo] = useState({ name: '', photo: '' });
+    const [matchedUserInfo, setMatchedUserInfo] = useState({ name: '', photo: '' });
+
 
     // 安全地获取参数，提供默认值
     const params = route.params as RouteParams | undefined;
+
     const matchedUser = params?.matchedUser || {
         id: 'default_matched',
-        name: 'Sarah',
-        photo: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400',
-        age: 25,
-        location: 'New York'
+        name: currentUserInfo.name,
+        photo: currentUserInfo.photo,
+
     };
     const currentUser = params?.currentUser || {
         id: 'default_current',
-        name: 'You',
-        photo: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400',
-        age: 28,
-        location: 'New York'
+        name: matchedUserInfo.name,
+        photo: matchedUserInfo.photo,
+
     };
 
     // Animation values
@@ -86,16 +88,32 @@ export default function MatchSuccessScreen() {
 
     useEffect(() => {
         // Get current user ID from SecureStore
-        const getCurrentUserId = async () => {
+        const fetchUserInfo = async () => {
             try {
                 const userId = await SecureStore.getItemAsync('user_id');
-                setCurrentUserId(userId);
+                if (!userId) return;
+
+                const response = await fetch(`${API_BASE_URL}/matching/get_their_and_my_info/${userId}`);
+                const data = await response.json();
+                console.log(data)
+
+                if (data) {
+                    setCurrentUserInfo({
+                        name: data.myInfo.name,
+                        photo: data.myInfo.photo,
+                    });
+
+                    setMatchedUserInfo({
+                        name: data.theirInfo.name,
+                        photo: data.theirInfo.photo,
+                    });
+                }
             } catch (error) {
-                console.error('Error getting user ID:', error);
+                console.error('Error fetching user info:', error);
             }
         };
 
-        getCurrentUserId();
+        fetchUserInfo();
 
         // Entrance animations
         Animated.sequence([
@@ -431,7 +449,7 @@ export default function MatchSuccessScreen() {
                         { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
                     ]}
                 >
-                    <Text style={styles.matchTitle}>It's a Match!</Text>
+                    <Text style={styles.matchTitle}>It&#39;s a Match!</Text>
                     <Text style={styles.matchSubtitle}>You and {matchedUser.name} liked each other</Text>
                 </Animated.View>
 
@@ -455,82 +473,17 @@ export default function MatchSuccessScreen() {
                             }
                         ]}
                     >
-                        <LinearGradient
-                            colors={['#ff6b6b', '#ff8e8e']}
-                            style={styles.heartBackground}
-                        >
-                            <Ionicons name="heart" size={40} color="#ffffff" />
-                        </LinearGradient>
+
                     </Animated.View>
 
                     <UserProfile user={matchedUser} isLeft={false} />
                 </View>
 
                 {/* Action Buttons */}
-                <Animated.View
-                    style={[
-                        styles.actionsContainer,
-                        {
-                            opacity: fadeAnim,
-                            transform: [{ translateY: slideAnim }, { scale: pulseAnim }]
-                        }
-                    ]}
-                >
-                    <TouchableOpacity
-                        style={styles.actionButton}
-                        onPress={handleScheduleDate}
-                        activeOpacity={0.8}
-                        disabled={isCreatingChat}
-                    >
-                        <LinearGradient
-                            colors={['#667eea', '#764ba2']}
-                            style={styles.buttonGradient}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                        >
-                            <Ionicons name="calendar" size={28} color="#ffffff" />
-                            <Text style={styles.buttonText}>Schedule Date</Text>
-                            <Text style={styles.buttonSubtext}>Plan something special</Text>
-                        </LinearGradient>
-                    </TouchableOpacity>
 
-                    <TouchableOpacity
-                        style={[styles.actionButton, isCreatingChat && styles.disabledButton]}
-                        onPress={handleStartChat}
-                        activeOpacity={0.8}
-                        disabled={isCreatingChat}
-                    >
-                        <LinearGradient
-                            colors={isCreatingChat ? ['#94a3b8', '#64748b'] : ['#4facfe', '#00f2fe']}
-                            style={styles.buttonGradient}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                        >
-                            {isCreatingChat ? (
-                                <ActivityIndicator color="#ffffff" size="small" style={{ marginRight: 8 }} />
-                            ) : (
-                                <Ionicons name="chatbubbles" size={28} color="#ffffff" />
-                            )}
-                            <Text style={styles.buttonText}>
-                                {isCreatingChat ? 'Creating Chat...' : 'Start Chatting'}
-                            </Text>
-                            <Text style={styles.buttonSubtext}>
-                                {isCreatingChat ? 'Please wait...' : 'Get to know each other'}
-                            </Text>
-                        </LinearGradient>
-                    </TouchableOpacity>
-                </Animated.View>
 
                 {/* Keep Swiping Button */}
-                <Animated.View style={[styles.keepSwipingContainer, { opacity: fadeAnim }]}>
-                    <TouchableOpacity
-                        style={styles.keepSwipingButton}
-                        onPress={() => navigation.goBack()}
-                        disabled={isCreatingChat}
-                    >
-                        <Text style={styles.keepSwipingText}>Keep Swiping</Text>
-                    </TouchableOpacity>
-                </Animated.View>
+
             </ScrollView>
 
             {/* Calendar Modal */}

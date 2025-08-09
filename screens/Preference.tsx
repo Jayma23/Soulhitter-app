@@ -38,11 +38,41 @@ const cards = [
 ];
 
 const CARD_BACK_DESIGNS = [
-    { id: 1, pattern: "✨", gradient: ['#667eea', '#764ba2'] as const, name: "Mysterious Star" },
-    { id: 2, pattern: "💫", gradient: ['#f093fb', '#f5576c'] as const, name: "Cosmic Wonder" },
-    { id: 3, pattern: "🌙", gradient: ['#4facfe', '#00f2fe'] as const, name: "Moonlight Dream" },
-    { id: 4, pattern: "🔮", gradient: ['#43e97b', '#38f9d7'] as const, name: "Crystal Ball" },
-    { id: 5, pattern: "💎", gradient: ['#fa709a', '#fee140'] as const, name: "Diamond Soul" },
+    {
+        id: 1,
+
+        image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745482/d5af474050c2ff7773f174745759d874_wgezje.jpg",
+        gradient: ['#667eea', '#764ba2'] as const,
+
+    },
+    {
+        id: 2,
+
+        image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745482/f80878eec037881744073d55f1479947_chr4zt.jpg",
+        gradient: ['#f093fb', '#f5576c'] as const,
+
+    },
+    {
+        id: 3,
+
+        image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745481/cf1ad304328fb5d9e6986bade94418fc_ygqcxa.jpg",
+        gradient: ['#4facfe', '#00f2fe'] as const,
+
+    },
+    {
+        id: 4,
+
+        image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745481/99_tuuquh.png",
+        gradient: ['#43e97b', '#38f9d7'] as const,
+
+    },
+    {
+        id: 5,
+
+        image: "https://res.cloudinary.com/dyedqw0mv/image/upload/v1753745481/2_btcngo.jpg",
+        gradient: ['#fa709a', '#fee140'] as const,
+
+    },
 ];
 
 const MATCHING_PHASES = {
@@ -261,6 +291,7 @@ export default function BlindBoxMatchingScreen() {
 
     const handleRevealCards = async () => {
         if (selectedCards.length !== 3) {
+
             Alert.alert("Please select exactly 3 cards first! 🎴");
             return;
         }
@@ -420,20 +451,23 @@ export default function BlindBoxMatchingScreen() {
                     disabled={currentPhase !== MATCHING_PHASES.BLIND_SELECTION}
                     activeOpacity={0.8}
                 >
-                    <LinearGradient
-                        colors={card.design.gradient}
-                        style={styles.cardBack}
-                    >
-                        <Text style={styles.cardPattern}>{card.design.pattern}</Text>
-                        <Text style={styles.cardBackName}>{card.design.name}</Text>
+                    {/* 显示实际图片而不是渐变背景 */}
+                    <Image
+                        source={{ uri: card.design.image }}
+                        style={styles.blindCardImage}
+                    />
 
+                    {/* 添加半透明遮罩层 */}
+                    <LinearGradient
+                        colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0)']}
+                        style={styles.blindCardOverlay}
+                    >
+                        {/* 选中状态的对号指示器 */}
                         {isSelected && (
                             <View style={styles.selectedIndicator}>
                                 <Text style={styles.checkmark}>✓</Text>
                             </View>
                         )}
-
-                        <View style={styles.mysticalGlow} />
                     </LinearGradient>
                 </TouchableOpacity>
             </Animated.View>
@@ -799,6 +833,7 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: '#ffffff',
     },
+
     startMatchingButton: {
         marginTop: 30,
         borderRadius: 20,
@@ -1059,5 +1094,17 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: 'rgba(255,255,255,0.8)',
         textAlign: 'center',
+    },
+    blindCardImage: {
+        width: '100%',
+        height: '100%',
+        resizeMode: 'cover',
+        position: 'absolute',
+    },
+    blindCardOverlay: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        position: 'relative',
     },
 });
