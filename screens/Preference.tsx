@@ -512,8 +512,8 @@ export default function BlindBoxMatchingScreen() {
                         style={styles.revealedGradient}
                     >
                         <Text style={styles.revealedName}>{card.user.name}</Text>
-                        <Text style={styles.revealedAge}>{card.user.age} years old</Text>
-                        <Text style={styles.matchScore}>{card.user.match_score}% Match</Text>
+                        
+
                     </LinearGradient>
 
                     {isSelected && (

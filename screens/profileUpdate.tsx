@@ -68,6 +68,11 @@ interface PersonalityAnswers {
     perfectDate: string;
 }
 
+// Word counting utility function
+const countWords = (text: string): number => {
+    return text.trim().split(/\s+/).filter(word => word.length > 0).length;
+};
+
 // 照片卡片组件
 const PhotoCard = React.memo(({
                                   uri,
@@ -293,6 +298,36 @@ export default function ProfileUpdateScreen() {
             );
         } else {
             navigation.goBack();
+        }
+    };
+
+    // 新增：返回首页功能
+    const handleGoHome = () => {
+        if (hasChanges) {
+            Alert.alert(
+                'Unsaved Changes',
+                'You have unsaved changes. Do you want to save them before going home?',
+                [
+                    {
+                        text: 'Discard',
+                        style: 'destructive',
+                        onPress: () => navigation.navigate('Home') // 假设主页面路由名为 'Home'
+                    },
+                    {
+                        text: 'Save & Go Home',
+                        onPress: async () => {
+                            await updateProfile();
+                            navigation.navigate('Home');
+                        }
+                    },
+                    {
+                        text: 'Cancel',
+                        style: 'cancel'
+                    }
+                ]
+            );
+        } else {
+            navigation.navigate('Home'); // 假设主页面路由名为 'Home'
         }
     };
 
@@ -611,6 +646,15 @@ export default function ProfileUpdateScreen() {
                 </View>
 
                 <View style={styles.rightButtons}>
+                    {/* HOME Button */}
+                    <TouchableOpacity
+                        style={styles.homeButton}
+                        onPress={handleGoHome}
+                    >
+                        <Ionicons name="home" size={20} color="#ffffff" />
+                        <Text style={styles.homeButtonText}>HOME</Text>
+                    </TouchableOpacity>
+
                     {hasChanges && (
                         <TouchableOpacity
                             style={styles.saveButton}
@@ -912,7 +956,6 @@ function BasicInfoStep({ answers, updateAnswer }: { answers: Answers; updateAnsw
                     <TextInput
                         style={styles.textInput}
                         value={basicAnswers.name}
-                        //onChangeText={(text: string) => updateAnswer('name', text)}
                         onChangeText={(text: string) => {
                             if (countWords(text) <= 200) {
                                 updateAnswer('name', text);
@@ -935,7 +978,6 @@ function BasicInfoStep({ answers, updateAnswer }: { answers: Answers; updateAnsw
                     <TextInput
                         style={styles.textInput}
                         value={basicAnswers.phone}
-                        //onChangeText={(text: string) => updateAnswer('phone', text)}
                         onChangeText={(text: string) => {
                             if (countWords(text) <= 200) {
                                 updateAnswer('phone', text);
@@ -958,7 +1000,6 @@ function BasicInfoStep({ answers, updateAnswer }: { answers: Answers; updateAnsw
                     <TextInput
                         style={styles.textInput}
                         value={answers.age || ''}
-                        //onChangeText={(text: string) => updateAnswer('age', text)}
                         onChangeText={(text: string) => {
                             if (countWords(text) <= 200) {
                                 updateAnswer('age', text);
@@ -982,7 +1023,6 @@ function BasicInfoStep({ answers, updateAnswer }: { answers: Answers; updateAnsw
                     <TextInput
                         style={styles.textInput}
                         value={basicAnswers.height}
-                        //onChangeText={(text: string) => updateAnswer('height', text)}
                         onChangeText={(text: string) => {
                             if (countWords(text) <= 200) {
                                 updateAnswer('height', text);
@@ -1103,7 +1143,6 @@ function BasicInfoStep({ answers, updateAnswer }: { answers: Answers; updateAnsw
                     <TextInput
                         style={styles.textInput}
                         value={basicAnswers.zipCode}
-                        //onChangeText={(text: string) => updateAnswer('zipCode', text)}
                         onChangeText={(text: string) => {
                             if (countWords(text) <= 200) {
                                 updateAnswer('zipCode', text);
@@ -1316,7 +1355,6 @@ function PreferencesStep({ answers, updateAnswer }: { answers: Answers; updateAn
                 <TextInput
                     style={styles.textAreaInput}
                     value={preferencesAnswers.greenFlags}
-                    //onChangeText={(text: string) => updateAnswer('greenFlags', text)}
                     onChangeText={(text: string) => {
                         if (countWords(text) <= 200) {
                             updateAnswer('greenFlags', text);
@@ -1337,7 +1375,6 @@ function PreferencesStep({ answers, updateAnswer }: { answers: Answers; updateAn
                 <TextInput
                     style={styles.textAreaInput}
                     value={preferencesAnswers.redFlags}
-                    //onChangeText={(text: string) => updateAnswer('redFlags', text)}
                     onChangeText={(text: string) => {
                         if (countWords(text) <= 200) {
                             updateAnswer('redFlags', text);
@@ -1358,7 +1395,6 @@ function PreferencesStep({ answers, updateAnswer }: { answers: Answers; updateAn
                 <TextInput
                     style={styles.textAreaInput}
                     value={preferencesAnswers.physicalAttraction}
-                    //onChangeText={(text: string) => updateAnswer('physicalAttraction', text)}
                     onChangeText={(text: string) => {
                         if (countWords(text) <= 200) {
                             updateAnswer('physicalAttraction', text);
@@ -1396,7 +1432,6 @@ function PersonalityStep({ answers, updateAnswer }: { answers: Answers; updateAn
                 <TextInput
                     style={styles.textAreaInput}
                     value={personalityAnswers.aboutMe}
-                    //onChangeText={(text: string) => updateAnswer('aboutMe', text)}
                     onChangeText={(text: string) => {
                         if (countWords(text) <= 200) {
                             updateAnswer('aboutMe', text);
@@ -1430,7 +1465,6 @@ function PersonalityStep({ answers, updateAnswer }: { answers: Answers; updateAn
                 <TextInput
                     style={styles.textAreaInput}
                     value={personalityAnswers.hobbies}
-                    //onChangeText={(text: string) => updateAnswer('hobbies', text)}
                     onChangeText={(text: string) => {
                         if (countWords(text) <= 200) {
                             updateAnswer('hobbies', text);
@@ -1453,7 +1487,6 @@ function PersonalityStep({ answers, updateAnswer }: { answers: Answers; updateAn
                 <TextInput
                     style={styles.textAreaInput}
                     value={personalityAnswers.lifestyle}
-                    //onChangeText={(text: string) => updateAnswer('lifestyle', text)}
                     onChangeText={(text: string) => {
                         if (countWords(text) <= 200) {
                             updateAnswer('lifestyle', text);
@@ -1476,7 +1509,6 @@ function PersonalityStep({ answers, updateAnswer }: { answers: Answers; updateAn
                 <TextInput
                     style={styles.textAreaInput}
                     value={personalityAnswers.values}
-                    //onChangeText={(text: string) => updateAnswer('values', text)}
                     onChangeText={(text: string) => {
                         if (countWords(text) <= 200) {
                             updateAnswer('values', text);
@@ -1499,7 +1531,6 @@ function PersonalityStep({ answers, updateAnswer }: { answers: Answers; updateAn
                 <TextInput
                     style={styles.textAreaInput}
                     value={personalityAnswers.futureGoals}
-                    //onChangeText={(text: string) => updateAnswer('futureGoals', text)}
                     onChangeText={(text: string) => {
                         if (countWords(text) <= 200) {
                             updateAnswer('futureGoals', text);
@@ -1522,7 +1553,6 @@ function PersonalityStep({ answers, updateAnswer }: { answers: Answers; updateAn
                 <TextInput
                     style={styles.textAreaInput}
                     value={personalityAnswers.perfectDate}
-                    //onChangeText={(text: string) => updateAnswer('perfectDate', text)}
                     onChangeText={(text: string) => {
                         if (countWords(text) <= 200) {
                             updateAnswer('perfectDate', text);
@@ -1605,6 +1635,27 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 8,
         minWidth: 60,
+    },
+    // HOME Button Styles
+    homeButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(239, 68, 68, 0.8)',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 16,
+        gap: 4,
+        shadowColor: '#ef4444',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    homeButtonText: {
+        color: '#ffffff',
+        fontSize: 12,
+        fontWeight: '700',
+        letterSpacing: 0.5,
     },
     saveButton: {
         flexDirection: 'row',
@@ -1843,6 +1894,11 @@ const styles = StyleSheet.create({
     ageRangeContainer: {
         alignItems: 'center',
         gap: 8,
+    },
+    ageInputsContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
     },
     ageInput: {
         backgroundColor: '#f8fafc',

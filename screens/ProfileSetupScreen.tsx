@@ -22,11 +22,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useUser } from './UserContext';
+
 const { width, height } = Dimensions.get('window');
 const photoSize = (width - 80) / 3;
 
 // 环境变量配置 - 请在你的 .env 文件中设置这些值
 import { CLOUDINARY_UPLOAD_URL, CLOUDINARY_UPLOAD_PRESET } from '@env';
+
 interface Answers {
     [key: string]: any;
 }
@@ -63,9 +65,11 @@ interface PersonalityAnswers {
     futureGoals: string;
     perfectDate: string;
 }
+
 function countWords(text: string): number {
     return text.trim().split(/\s+/).filter(Boolean).length;
 }
+
 // 照片卡片组件
 const PhotoCard = React.memo(({
                                   uri,
@@ -144,8 +148,11 @@ export default function AIMatchingQuestionnaire() {
     const scaleAnim = useRef(new Animated.Value(0.9)).current;
     const { setUser } = useUser();
 
-    const totalSteps = 4; // 增加到4步：照片、基本信息、偏好、个性
+    const totalSteps = 4;
     const progress = ((currentStep + 1) / totalSteps) * 100;
+
+    // ScrollView引用
+    const scrollViewRef = useRef<ScrollView>(null);
 
     // 隐藏默认的导航头部
     React.useLayoutEffect(() => {
@@ -154,29 +161,52 @@ export default function AIMatchingQuestionnaire() {
         });
     }, [navigation]);
 
+    // 滚动到顶部的函数
+    const scrollToTop = useCallback(() => {
+        // 使用 setTimeout 确保在下一个事件循环中执行
+        setTimeout(() => {
+            scrollViewRef.current?.scrollTo({
+                y: 0,
+                animated: true // 改为 true 提供平滑滚动
+            });
+        }, 50); // 给一个小延迟确保组件已经渲染
+    }, []);
+
     useEffect(() => {
+        // 每次步骤改变时滚动到顶部
+        scrollToTop();
+
+        // 重置动画值
+        fadeAnim.setValue(0);
+        slideAnim.setValue(50);
+        scaleAnim.setValue(0.9);
+
         // 页面进入动画
-        Animated.parallel([
-            Animated.timing(fadeAnim, {
-                toValue: 1,
-                duration: 600,
-                easing: Easing.out(Easing.cubic),
-                useNativeDriver: true,
-            }),
-            Animated.timing(slideAnim, {
-                toValue: 0,
-                duration: 500,
-                easing: Easing.out(Easing.back(1.1)),
-                useNativeDriver: true,
-            }),
-            Animated.timing(scaleAnim, {
-                toValue: 1,
-                duration: 500,
-                easing: Easing.out(Easing.back(1.1)),
-                useNativeDriver: true,
-            })
-        ]).start();
-    }, [currentStep, fadeAnim, slideAnim, scaleAnim]);
+        const animationDelay = setTimeout(() => {
+            Animated.parallel([
+                Animated.timing(fadeAnim, {
+                    toValue: 1,
+                    duration: 600,
+                    easing: Easing.out(Easing.cubic),
+                    useNativeDriver: true,
+                }),
+                Animated.timing(slideAnim, {
+                    toValue: 0,
+                    duration: 500,
+                    easing: Easing.out(Easing.back(1.1)),
+                    useNativeDriver: true,
+                }),
+                Animated.timing(scaleAnim, {
+                    toValue: 1,
+                    duration: 500,
+                    easing: Easing.out(Easing.back(1.1)),
+                    useNativeDriver: true,
+                })
+            ]).start();
+        }, 100); // 给一点延迟让滚动先完成
+
+        return () => clearTimeout(animationDelay);
+    }, [currentStep]); // 只依赖 currentStep
 
     useEffect(() => {
         // 更新进度条
@@ -216,20 +246,9 @@ export default function AIMatchingQuestionnaire() {
             navigation.navigate('Home');
         }
     };
-    const scrollViewRef = useRef<ScrollView>(null);
+
     const nextStep = () => {
         if (currentStep < totalSteps - 1) {
-            // 立即滚动到顶部
-            scrollViewRef.current?.scrollTo({
-                y: 0,
-                animated: false
-            });
-
-            // 重置动画
-            fadeAnim.setValue(0);
-            slideAnim.setValue(50);
-            scaleAnim.setValue(0.9);
-
             setCurrentStep(prev => prev + 1);
         } else {
             submitAnswers();
@@ -238,17 +257,6 @@ export default function AIMatchingQuestionnaire() {
 
     const previousStep = () => {
         if (currentStep > 0) {
-            // 立即滚动到顶部
-            scrollViewRef.current?.scrollTo({
-                y: 0,
-                animated: false
-            });
-
-            // 重置动画
-            fadeAnim.setValue(0);
-            slideAnim.setValue(50);
-            scaleAnim.setValue(0.9);
-
             setCurrentStep(prev => prev - 1);
         }
     };
@@ -336,25 +344,13 @@ export default function AIMatchingQuestionnaire() {
                 completed_at: new Date().toISOString(),
                 total_words: Object.values(answers).join(' ').split(' ').length
             };
-            if (answers.user_id) {
-                await SecureStore.setItemAsync('user_id', String(answers.user_id));
-            }
-            if (answers.name) {
-                await SecureStore.setItemAsync('name1', String(answers.name));
-            }
-            if (answers.email) {
-                await SecureStore.setItemAsync('email1', String(answers.email));
-            }
-            if (answers.photo) {
-                await SecureStore.setItemAsync('photo', String(answers.photo));
-            }
-            if (answers.token) {
-                await SecureStore.setItemAsync('token', answers.token);
-            }
 
-
-
-
+            // 保存数据到 SecureStore
+            if (answers.user_id) await SecureStore.setItemAsync('user_id', String(answers.user_id));
+            if (answers.name) await SecureStore.setItemAsync('name1', String(answers.name));
+            if (answers.email) await SecureStore.setItemAsync('email1', String(answers.email));
+            if (answers.photo) await SecureStore.setItemAsync('photo', String(answers.photo));
+            if (answers.token) await SecureStore.setItemAsync('token', answers.token);
 
             const saveResponse = await fetch('https://ccbackendx-2.onrender.com/personality/save-profile', {
                 method: 'POST',
@@ -422,7 +418,6 @@ export default function AIMatchingQuestionnaire() {
 
             const data = await res.json();
             if (data.secure_url) {
-                // 修复：正确更新照片数组，保持其他照片不变
                 setAnswers(prev => {
                     const currentPhotos = prev.photos || [null, null, null, null, null];
                     const newPhotos = [...currentPhotos];
@@ -580,9 +575,13 @@ export default function AIMatchingQuestionnaire() {
             </Animated.View>
 
             <ScrollView
+                ref={scrollViewRef}
                 style={styles.scrollView}
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
+                // 添加这些属性来改善滚动行为
+                scrollEventThrottle={16}
+                keyboardShouldPersistTaps="handled"
             >
                 {/* Question Card */}
                 <Animated.View
@@ -621,6 +620,9 @@ export default function AIMatchingQuestionnaire() {
                         {renderCurrentStep()}
                     </View>
                 </Animated.View>
+
+                {/* 添加额外的底部间距确保内容不被底部按钮遮挡 */}
+                <View style={styles.bottomSpacer} />
             </ScrollView>
 
             {/* Bottom Actions */}
@@ -676,7 +678,7 @@ export default function AIMatchingQuestionnaire() {
     );
 }
 
-// Step Components
+// Step Components - 保持不变，为了简洁这里不重复
 function PhotosStep({
                         answers,
                         updateAnswer,
@@ -690,12 +692,10 @@ function PhotosStep({
     removePhoto: (index: number) => void;
     uploading: number | null;
 }) {
-    // 确保照片数组始终有5个元素
     const photos = answers.photos && Array.isArray(answers.photos)
         ? answers.photos
         : [null, null, null, null, null];
 
-    // 确保数组长度为5
     while (photos.length < 5) {
         photos.push(null);
     }
@@ -708,9 +708,7 @@ function PhotosStep({
                 Add {5 - uploadedPhotosCount} more photos (at least 1 required)
             </Text>
 
-            {/* Photo Grid - Hinge Style */}
             <View style={styles.photoGrid}>
-                {/* First row: Main photo */}
                 <View style={styles.mainPhotoRow}>
                     <PhotoCard
                         uri={photos[0]}
@@ -721,7 +719,6 @@ function PhotosStep({
                     />
                 </View>
 
-                {/* Second row: Two photos */}
                 <View style={styles.photoRow}>
                     <PhotoCard
                         uri={photos[1]}
@@ -739,7 +736,6 @@ function PhotosStep({
                     />
                 </View>
 
-                {/* Third row: Two photos */}
                 <View style={styles.photoRow}>
                     <PhotoCard
                         uri={photos[3]}
@@ -758,7 +754,6 @@ function PhotosStep({
                 </View>
             </View>
 
-            {/* Photo Tips */}
             <View style={styles.tipsContainer}>
                 <Text style={styles.tipsTitle}>📸 Photo Tips</Text>
                 <View style={styles.tipItem}>
@@ -843,7 +838,6 @@ function BasicInfoStep({ answers, updateAnswer }: { answers: Answers; updateAnsw
                     <TextInput
                         style={styles.textInput}
                         value={basicAnswers.name}
-
                         onChangeText={(text: string) => {
                             if (countWords(text) <= 200) {
                                 updateAnswer('name', text);
@@ -911,7 +905,6 @@ function BasicInfoStep({ answers, updateAnswer }: { answers: Answers; updateAnsw
                     <TextInput
                         style={styles.textInput}
                         value={basicAnswers.height}
-                        //onChangeText={(text: string) => updateAnswer('height', text)}
                         onChangeText={(text: string) => {
                             if (countWords(text) <= 200) {
                                 updateAnswer('height', text);
@@ -1032,7 +1025,6 @@ function BasicInfoStep({ answers, updateAnswer }: { answers: Answers; updateAnsw
                     <TextInput
                         style={styles.textInput}
                         value={basicAnswers.zipCode}
-                        //onChangeText={(text: string) => updateAnswer('zipCode', text)}
                         onChangeText={(text: string) => {
                             if (countWords(text) <= 200) {
                                 updateAnswer('zipCode', text);
@@ -1232,7 +1224,6 @@ function PreferencesStep({ answers, updateAnswer }: { answers: Answers; updateAn
                             keyboardType="numeric"
                             placeholder="30"
                         />
-
                     </View>
                     <Text style={styles.ageLabel}>Max: {preferencesAnswers.ageRange[1]}</Text>
                 </View>
@@ -1244,7 +1235,6 @@ function PreferencesStep({ answers, updateAnswer }: { answers: Answers; updateAn
                 <TextInput
                     style={styles.textAreaInput}
                     value={preferencesAnswers.greenFlags}
-                    //onChangeText={(text: string) => updateAnswer('greenFlags', text)}
                     onChangeText={(text: string) => {
                         if (countWords(text) <= 200) {
                             updateAnswer('greenFlags', text);
@@ -1265,7 +1255,6 @@ function PreferencesStep({ answers, updateAnswer }: { answers: Answers; updateAn
                 <TextInput
                     style={styles.textAreaInput}
                     value={preferencesAnswers.redFlags}
-                    //onChangeText={(text: string) => updateAnswer('redFlags', text)}
                     onChangeText={(text: string) => {
                         if (countWords(text) <= 200) {
                             updateAnswer('redFlags', text);
@@ -1286,7 +1275,6 @@ function PreferencesStep({ answers, updateAnswer }: { answers: Answers; updateAn
                 <TextInput
                     style={styles.textAreaInput}
                     value={preferencesAnswers.physicalAttraction}
-                    //onChangeText={(text: string) => updateAnswer('physicalAttraction', text)}
                     onChangeText={(text: string) => {
                         if (countWords(text) <= 200) {
                             updateAnswer('physicalAttraction', text);
@@ -1323,7 +1311,6 @@ function PersonalityStep({ answers, updateAnswer }: { answers: Answers; updateAn
                 <TextInput
                     style={styles.textAreaInput}
                     value={personalityAnswers.aboutMe}
-                    //onChangeText={(text: string) => updateAnswer('aboutMe', text)}
                     onChangeText={(text: string) => {
                         if (countWords(text) <= 200) {
                             updateAnswer('aboutMe', text);
@@ -1357,7 +1344,6 @@ function PersonalityStep({ answers, updateAnswer }: { answers: Answers; updateAn
                 <TextInput
                     style={styles.textAreaInput}
                     value={personalityAnswers.hobbies}
-                    //onChangeText={(text: string) => updateAnswer('hobbies', text)}
                     onChangeText={(text: string) => {
                         if (countWords(text) <= 200) {
                             updateAnswer('hobbies', text);
@@ -1380,7 +1366,6 @@ function PersonalityStep({ answers, updateAnswer }: { answers: Answers; updateAn
                 <TextInput
                     style={styles.textAreaInput}
                     value={personalityAnswers.lifestyle}
-                    //onChangeText={(text: string) => updateAnswer('lifestyle', text)}
                     onChangeText={(text: string) => {
                         if (countWords(text) <= 200) {
                             updateAnswer('lifestyle', text);
@@ -1403,7 +1388,6 @@ function PersonalityStep({ answers, updateAnswer }: { answers: Answers; updateAn
                 <TextInput
                     style={styles.textAreaInput}
                     value={personalityAnswers.values}
-                    //onChangeText={(text: string) => updateAnswer('values', text)}
                     onChangeText={(text: string) => {
                         if (countWords(text) <= 200) {
                             updateAnswer('values', text);
@@ -1426,7 +1410,6 @@ function PersonalityStep({ answers, updateAnswer }: { answers: Answers; updateAn
                 <TextInput
                     style={styles.textAreaInput}
                     value={personalityAnswers.futureGoals}
-                    //onChangeText={(text: string) => updateAnswer('futureGoals', text)}
                     onChangeText={(text: string) => {
                         if (countWords(text) <= 200) {
                             updateAnswer('futureGoals', text);
@@ -1449,7 +1432,6 @@ function PersonalityStep({ answers, updateAnswer }: { answers: Answers; updateAn
                 <TextInput
                     style={styles.textAreaInput}
                     value={personalityAnswers.perfectDate}
-                    //onChangeText={(text: string) => updateAnswer('perfectDate', text)}
                     onChangeText={(text: string) => {
                         if (countWords(text) <= 200) {
                             updateAnswer('perfectDate', text);
@@ -1550,7 +1532,10 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
         paddingHorizontal: 24,
-        paddingBottom: 120,
+        paddingBottom: 40, // 减少底部padding，因为我们添加了bottomSpacer
+    },
+    bottomSpacer: {
+        height: 100, // 确保内容不被底部按钮遮挡
     },
     questionCard: {
         backgroundColor: '#ffffff',
